@@ -1,10 +1,9 @@
 //@ts-check
 import assert from "assert"
-import pkg from "zunit"
+import { describe, it, beforeEach } from "node:test"
 
 import StreamJSONTokenizer, { TOKEN } from "../src/StreamJSONTokenizer.js"
 
-const { describe, odescribe, it, oit, beforeEach } = pkg
 describe("StreamJSONTokenizer", () => {
   let st, encoder, decodeAndStringify
   beforeEach(() => {

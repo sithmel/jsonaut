@@ -1,11 +1,9 @@
 //@ts-check
 import assert from "assert"
-import pkg from "zunit"
+import { describe, it } from "node:test"
 
 import SequenceToStream from "../src/SequenceToStream.js"
 import ObjectToSequence from "../src/ObjectToSequence.js"
-
-const { describe, it, oit, odescribe } = pkg
 
 async function testObj(obj) {
   let str = ""

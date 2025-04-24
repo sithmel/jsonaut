@@ -1,10 +1,8 @@
 //@ts-check
 import assert from "assert"
-import pkg from "zunit"
+import { describe, it } from "node:test"
 
 import pathExpParse from "../../src/pathExp/parser.js"
-
-const { describe, odescribe, it, oit, beforeEach } = pkg
 
 describe("path exp parser", () => {
   it("parses simple string", () => {

@@ -1,8 +1,8 @@
-![JSON key value logo](https://raw.githubusercontent.com/sithmel/json-key-value/main/logo/logo.png)
+![JSON key value logo](https://raw.githubusercontent.com/sithmel/jsonaut/main/logo/logo.png)
 
-# json-key-value
+# JSONaut
 
-json-key-value is a toolkit to work with JSON and JS object as they are converted to a sequence to path value pairs (using iterables).
+JSONaut is a toolkit to work with JSON and JS object as they are converted to a sequence to path value pairs (using iterables).
 It enables using filter, map reduce techniques in a way that is readable, simpler and efficient.
 
 It is minimal (no dependencies) but work well with other libraries. It is designed for both server and client.
@@ -14,13 +14,13 @@ This allows to filter and transform a big JSON as a stream, without having to lo
 
 An example of a sequence is:
 
-| Path, Value                | Resulting object                                         |
-| -------------------------- | -------------------------------------------------------- |
-| [], {}                     | {}                                                       |
-| ["name"], "json-key-value" | {"name": "json-key-value"}                               |
-| ["keywords"], []           | {"name": "json-key-value", keywords: []}                 |
-| ["keywords", 0], "json"    | {"name": "json-key-value", keywords: ["json"]}           |
-| ["keywords", 1], "stream"  | {"name": "json-key-value", keywords: ["json", "stream"]} |
+| Path, Value                | Resulting object                                  |
+| -------------------------- | ------------------------------------------------- |
+| [], {}                     | {}                                                |
+| ["name"], "JSONaut"        | {"name": "JSONaut"}                               |
+| ["keywords"], []           | {"name": "JSONaut", keywords: []}                 |
+| ["keywords", 0], "json"    | {"name": "JSONaut", keywords: ["json"]}           |
+| ["keywords", 1], "stream"  | {"name": "JSONaut", keywords: ["json", "stream"]} |
 
 ## About the ordering
 
@@ -35,11 +35,11 @@ Fetching a big JSON on the browser and render the data in the UI while being dow
 
 ### Filter data
 
-Using json-key-value in the backend to fetch a JSON from some source (db, file system, network) and filter the data needed. The `include` expression can be passed as query parameter or in the body, so that a browser can use a graphql like syntax to avoid overfetching. See the [benchmarks](#benchmarks).
+Using JSONaut in the backend to fetch a JSON from some source (db, file system, network) and filter the data needed. The `include` expression can be passed as query parameter or in the body, so that a browser can use a graphql like syntax to avoid overfetching. See the [benchmarks](#benchmarks).
 
 ### Easy Data manipulation
 
-Transforming a tree data structure (like a Javascript object) is not super convenient. With json-key-value you can simply iterate over the sequence and use familiar filter/map/reduce.
+Transforming a tree data structure (like a Javascript object) is not super convenient. With JSONaut you can simply iterate over the sequence and use familiar filter/map/reduce.
 
 # API
 
@@ -59,7 +59,7 @@ Let's assume we have this JSON:
 ```
 
 ```js
-import { StreamToSequence } from "json-key-value"
+import { StreamToSequence } from "jsonaut"
 
 const parser = new StreamToSequence()
 for async (const chunk of bufferIterable) {
@@ -97,7 +97,7 @@ Here is how it works:
 Let's assume we use the same JSON used above:
 
 ```js
-import { StreamToSequence } from "json-key-value"
+import { StreamToSequence } from "jsonaut"
 
 const parser = new StreamToSequence({maxDepth: 1})
 for async (const chunk of bufferIterable) {
@@ -119,7 +119,7 @@ This will print:
 _includes_ allows to select what paths we want to read and filter the others. It is much faster then filtering the pairs after are emitted because allows stop parsing the stream if no further matches are possible. Here is an example (using the same JSON):
 
 ```js
-import { StreamToSequence } from "json-key-value"
+import { StreamToSequence } from "jsonaut"
 
 const parser = new StreamToSequence({includes: '0 (firstName)'})
 for async (const chunk of bufferIterable) {
@@ -139,7 +139,7 @@ With this output:
 `includes` is able to figure out whether there are still data to extract of we can stop reading from the buffer.
 
 ```js
-import { StreamToSequence } from "json-key-value"
+import { StreamToSequence } from "jsonaut"
 
 const parser = new StreamToSequence({includes: '0 (firstName)'})
 for async (const chunk of bufferIterable) {
@@ -160,7 +160,7 @@ The iter method yields 2 extra numbers. They are the starting and ending positio
 So for example, with the JSON we used so far:
 
 ```js
-import { StreamToSequence } from "json-key-value"
+import { StreamToSequence } from "jsonaut"
 
 const parser = new StreamToSequence({maxDepth: 1})
 for async (const chunk of bufferIterable) {
@@ -188,7 +188,7 @@ It is possible to resume the parsing using the option `startingPath`.
 So for example, let's say we want to resume reading from "Peter Parker":
 
 ```js
-import { StreamToSequence } from "json-key-value"
+import { StreamToSequence } from "jsonaut"
 
 const parser = new StreamToSequence({maxDepth: 1, startingPath: [1]})
 // bufferIterable MUST start from the byte number 53
@@ -214,7 +214,7 @@ In this case startPosition and endPosition will be relative to the buffer starti
 ObjectToSequence transforms a js object into a sequence:
 
 ```js
-import { ObjectToSequence } from "json-key-value"
+import { ObjectToSequence } from "jsonaut"
 
 const parser = new ObjectToSequence()
 for (const [path, value] of parser.iter({ hello: world })) {
@@ -237,7 +237,7 @@ They works exactly the same as for StreamToSequence.
 SequenceToObject reconstructs an object from a sequence:
 
 ```js
-import { SequenceToObject } from "json-key-value"
+import { SequenceToObject } from "jsonaut"
 
 const objBuilder = new SequenceToObject()
 objBuilder.add([], {}) // build initial object
@@ -274,7 +274,7 @@ objBuilder.object === ["hello world"]
 SequenceToStream allows to reconstruct a JSON stream from a sequence:
 
 ```js
-import { SequenceToStream } from "json-key-value"
+import { SequenceToStream } from "jsonaut"
 
 let str = ""
 const decoder = new TextDecoder()
@@ -343,7 +343,7 @@ str === '["hello world"]'
 This utility converts a string in a data structure used to filter paths. This is used internally but is also exposed to be used for debugging, ensure that the include syntax is correct, and reformat the includes expression.
 
 ```js
-import { parseIncludes } from "json-key-value"
+import { parseIncludes } from "jsonaut"
 
 const matcher = parseIncludes(
   `
@@ -379,7 +379,7 @@ PathConverter is a utility class that converts paths in strings (and vice versa)
 It is designed to emit strings that can be stored in a database and retrieved in lexicographic order.
 
 ```js
-import { PathConverter } from "json-key-value"
+import { PathConverter } from "jsonaut"
 
 const separator = "//"
 const numberPrefix = "@@"
@@ -395,7 +395,7 @@ Both StreamToSequence.iter and ObjectToSequence.iter return an iterable of path/
 These can be transformed using a for loop, and then converted to an object (SequenceToObject) or a JSON stream (SequenceToStream):
 
 ```js
-import { SequenceToObject, ObjectToSequence } from "json-key-value"
+import { SequenceToObject, ObjectToSequence } from "jsonaut"
 
 function getPricesWithVAT(obj) {
   const builder = new SequenceToObject()
@@ -514,7 +514,7 @@ to get this sequence:
 In this example shows how to filter a JSON using fetch without loading it into memory.
 
 ```js
-import { StreamToSequence, SequenceToStream } from "json-key-value"
+import { StreamToSequence, SequenceToStream } from "jsonaut"
 
 async function filterJSONStream(readable, writable, includes, controller) {
   const encoder = new TextEncoder()
@@ -553,7 +553,7 @@ async function fetchAndFilter(url, pathExpression) {
 ```
 
 ## Use a range request to load a JSON fragment
-Here is an [example](https://sithmel.github.io/json-key-value/demo) on how to use an HTTP range request to load a fragment of a JSON. In this example once picked a number, a JSON containing the index will be parsed. The index is generated like this (on the server side):
+Here is an [example](https://sithmel.github.io/jsonaut/demo) on how to use an HTTP range request to load a fragment of a JSON. In this example once picked a number, a JSON containing the index will be parsed. The index is generated like this (on the server side):
 ```js
 async function createIndex(JSONPath, indexPath) {
   const readStream = fs.createReadStream(JSONPath)
@@ -581,7 +581,7 @@ This function read part of a JSON from a file.
 
 ```js
 import fs from "fs"
-import { StreamToSequence, SequenceToObject } from "json-key-value"
+import { StreamToSequence, SequenceToObject } from "jsonaut"
 
 async function filterFile(filename, includes) {
   const readStream = fs.createReadStream(filename)
@@ -606,7 +606,7 @@ The library provides 2 ways to get a sequence `ObjectToSequence` and `StreamToSe
 You can use ObjectToSequence to return a sequence of path, value pairs from an object.
 
 ```js
-import { ObjectToSequence } from "json-key-value"
+import { ObjectToSequence } from "jsonaut"
 
 const parser = new ObjectToSequence()
 for (const [path, value] of parser.iter(obj)) {
@@ -617,7 +617,7 @@ for (const [path, value] of parser.iter(obj)) {
 Of course you can easily convert it from a string:
 
 ```js
-import { ObjectToSequence } from "json-key-value"
+import { ObjectToSequence } from "jsonaut"
 
 const parser = new ObjectToSequence()
 for (const [path, value] of parser.iter(JSON.parse(obj))) {

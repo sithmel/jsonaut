@@ -1,11 +1,10 @@
 //@ts-check
 import assert from "assert"
-import pkg from "zunit"
+import { describe, it, before } from "node:test"
 
 import StreamToSequence from "../src/StreamToSequence.js"
 import SequenceToStream from "../src/SequenceToStream.js"
 
-const { xdescribe, describe, it, oit, before } = pkg
 
 /**
  * @param {{text:string}} output

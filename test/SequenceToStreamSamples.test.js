@@ -1,13 +1,11 @@
 //@ts-check
 import assert from "assert"
-import pkg from "zunit"
+import { describe, it, beforeEach } from "node:test"
 import fs from "fs"
 import path from "path"
 
 import SequenceToStream from "../src/SequenceToStream.js"
 import StreamToSequence from "../src/StreamToSequence.js"
-
-const { describe, oit, it, beforeEach } = pkg
 
 describe("SequenceToStream sample files", () => {
   let parser

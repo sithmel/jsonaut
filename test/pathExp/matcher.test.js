@@ -1,7 +1,6 @@
 //@ts-check
 import assert from "assert"
-import pkg from "zunit"
-
+import { describe, it, beforeEach } from "node:test"
 import {
   AnyMatcher,
   SegmentMatcher,
@@ -10,8 +9,6 @@ import {
 } from "../../src/pathExp/matcher.js"
 
 import { CachedStringBuffer, Path } from "../../src/pathExp/path.js"
-
-const { describe, odescribe, it, oit, beforeEach } = pkg
 
 const encoder = new TextEncoder()
 const encodePath = (path) => {

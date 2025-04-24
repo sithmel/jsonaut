@@ -1,12 +1,12 @@
 {
-  "name": "json-key-value",
+  "name": "jsonaut",
   "version": "1.1.2",
   "description": "Allows to work on JSON as a sequence to path/value pairs",
   "main": "src/index.mjs",
   "type": "module",
   "types": "types/index.d.mts",
   "scripts": {
-    "test": "zUnit",
+    "test": "node --test test/*.js",
     "types": "tsc",
     "format": "prettier --ignore-unknown --write .",
     "build-doc": "typedoc src/*.js src/**/*.js",
@@ -15,7 +15,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/sithmel/json-key-value.git"
+    "url": "git+https://github.com/sithmel/jsonaut.git"
   },
   "keywords": [
     "json",
@@ -24,16 +24,15 @@
   "author": "Maurizio Lupo <maurizio.lupo@gmail.com>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/sithmel/json-key-value/issues"
+    "url": "https://github.com/sithmel/jsonaut/issues"
   },
-  "homepage": "https://github.com/sithmel/json-key-value#readme",
+  "homepage": "https://github.com/sithmel/jsonaut#readme",
   "devDependencies": {
-    "@types/node": "^22.10.5",
-    "@types/web": "^0.0.193",
-    "prettier": "^3.4.2",
-    "typedoc": "^0.27.6",
-    "typescript": "^5.7.3",
-    "zunit": "^4.0.2"
+    "@types/node": "^22.14.1",
+    "@types/web": "^0.0.225",
+    "prettier": "^3.5.3",
+    "typedoc": "^0.28.3",
+    "typescript": "^5.8.3"
   },
   "prettier": {
     "semi": false

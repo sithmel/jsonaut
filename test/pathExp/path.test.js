@@ -1,10 +1,7 @@
 //@ts-check
 import assert from "assert"
-import pkg from "zunit"
-
+import { describe, it, beforeEach } from "node:test"
 import { Path, CachedStringBuffer } from "../../src/pathExp/path.js"
-
-const { describe, odescribe, it, oit, beforeEach } = pkg
 
 describe("StringSegment and Path", () => {
   describe("StringSegment", () => {

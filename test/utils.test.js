@@ -1,6 +1,6 @@
 //@ts-check
 import assert from "assert"
-import pkg from "zunit"
+import { describe, it } from "node:test"
 
 import {
   isArrayOrObject,
@@ -13,7 +13,6 @@ import {
   stringifyAndEncode,
 } from "../src/utils.js"
 
-const { describe, it, oit, beforeEach } = pkg
 describe("utils", () => {
   describe("isArrayOrObject", () => {
     it("works with plain objects", () =>

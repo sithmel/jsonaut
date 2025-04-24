@@ -1,10 +1,8 @@
 //@ts-check
 import assert from "assert"
-import pkg from "zunit"
+import { describe, it } from "node:test"
 
 import SequenceToObject from "../src/SequenceToObject.js"
-
-const { describe, it, oit } = pkg
 
 describe("SequenceToObject", () => {
   it("works with scalars", () => {
