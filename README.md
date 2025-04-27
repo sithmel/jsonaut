@@ -338,14 +338,14 @@ str === '["hello world"]'
 
 ## Utilities
 
-### parseIncludes
+### getPathMatcher
 
 This utility converts a string in a data structure used to filter paths. This is used internally but is also exposed to be used for debugging, ensure that the include syntax is correct, and reformat the includes expression.
 
 ```js
-import { parseIncludes } from "jsonaut"
+import { getPathMatcher } from "jsonaut"
 
-const matcher = parseIncludes(
+const matcher = getPathMatcher(
   `
 "A"(
   "B"(
@@ -372,22 +372,6 @@ matcher.stringify("  ") // this returns an nicely indented version (2 spaces ind
 
 Note: The compact version of the expression (returned by stringify without arguments) has been designed to be passed as query parameter minimising the characters encoded (only the spaces), so that `'A'('B'('C' 'D') 'E') 'F'` becomes:
 `'A'('B'('C'%20'D')%20'E')%20'F'`.
-
-### pathConverter
-
-PathConverter is a utility class that converts paths in strings (and vice versa).
-It is designed to emit strings that can be stored in a database and retrieved in lexicographic order.
-
-```js
-import { PathConverter } from "jsonaut"
-
-const separator = "//"
-const numberPrefix = "@@"
-const pathConverter = new PathConverter(separator, prefix)
-const path = ["hello", "world", 1]
-const pathString = pathConverter.pathToString(path) // "hello//world//@@A1"
-path === pathConverter.stringToPath(pathString)
-```
 
 # Work with the sequence
 

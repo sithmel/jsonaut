@@ -19,10 +19,13 @@ const STATE = {
 
 /**
  * parse and include expression and return a Matcher
- * @param {string} str - the include expression
+ * @param {string?} str - the include expression
  * @return {MatcherContainer}
  */
 function parseIncludes(str) {
+  if (str == null) {
+    return new MatcherContainer()
+  }
   str += " " // this simplifies parsing of numbers (the extra space act as a delimiter)
   const matcherStack = [new MatcherContainer()]
   const getLastMatcherChildren = () =>
