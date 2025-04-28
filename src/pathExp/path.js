@@ -6,10 +6,10 @@ import { decodeAndParse } from "../utils.js"
  */
 export class CachedStringBuffer {
   /** @param {Uint8Array} data */
-  constructor(data) {
+  constructor(data, cache = null) {
     this.data = data
     /** @type {?string} */
-    this.cache = null
+    this.cache = cache
   }
   /** @return {import("../baseTypes").JSONSegmentPathType} */
   toDecoded() {
@@ -44,14 +44,16 @@ export class Path {
     return this.array.length - this.offset
   }
 
-  /** @param {CachedStringBuffer|number|string} segment*/
+  /** @param {CachedStringBuffer|number|string} segment
+   * @return {Path}
+  */
   push(segment) {
-    this.array.push(segment)
+    return new Path([...this.array, segment])
   }
 
-  /** @return {?CachedStringBuffer|number|string}*/
+  /** @return {Path} */
   pop() {
-    return this.array.pop() ?? null
+    return new Path(this.array.slice(0, -1))
   }
 
   /**

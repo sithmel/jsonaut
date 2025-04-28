@@ -21,23 +21,22 @@ describe("StringSegment and Path", () => {
     let path
     beforeEach(() => {
       path = new Path()
-      path.push(
+      path = path.push(
         new CachedStringBuffer(
           new Uint8Array([34, 104, 101, 108, 108, 111, 34]),
         ),
       )
-      path.push(1)
-      path.push(2)
-      path.push(3)
+      path = path.push(1)
+      path = path.push(2)
+      path = path.push(3)
     })
     it("decodes path", () => {
       assert.deepEqual(path.toDecoded(), ["hello", 1, 2, 3])
     })
     it("pops and gets", () => {
-      const stringSegment = path.pop()
-      assert.equal(stringSegment, 3)
-      assert.deepEqual(path.toDecoded(), ["hello", 1, 2])
-      assert.equal(path.get(0).toDecoded(), "hello")
+      const newPath = path.pop()
+      assert.deepEqual(newPath.toDecoded(), ["hello", 1, 2])
+      assert.equal(newPath.get(0).toDecoded(), "hello")
     })
     it("returns rest", () => {
       const newPath = path.rest()

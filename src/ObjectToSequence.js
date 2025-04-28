@@ -46,9 +46,9 @@ class ObjectToSequence {
         pathSegmentsAndValues = Object.entries(obj)
       }
       for (const [pathSegment, value] of pathSegmentsAndValues) {
-        currentPath.push(pathSegment)
-        yield* this.iter(value, currentPath)
-        currentPath.pop()
+        this.currentPath = currentPath.push(pathSegment)
+        yield* this.iter(value, this.currentPath)
+        this.currentPath = currentPath.pop()
       }
     } else {
       if (this.matcher.doesMatch(currentPath)) {
