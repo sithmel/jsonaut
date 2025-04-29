@@ -8,6 +8,7 @@ import SequenceToStream from "../src/SequenceToStream.js"
 import StreamToSequence from "../src/StreamToSequence.js"
 
 describe("SequenceToStream sample files", () => {
+  /** @type {StreamToSequence} */
   let parser
   beforeEach(() => {
     parser = new StreamToSequence()
@@ -35,11 +36,12 @@ describe("SequenceToStream sample files", () => {
         encoding: "utf-8",
       })
 
-      for await (const chunk of readStream) {
-        for await (const [k, v] of parser.iter(chunk)) {
-          builder.add(k, v)
+      for await (const iterable of parser.iter(readStream)) {
+        for (const [k, v] of iterable) {
+          builder.add(k.decoded, v.decoded)
         }
       }
+
       await builder.end()
       const original = JSON.parse(json)
       const copy = JSON.parse(str)

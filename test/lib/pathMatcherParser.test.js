@@ -2,7 +2,7 @@
 import assert from "assert"
 import { describe, it } from "node:test"
 
-import pathExpParse from "../../src/pathExp/parser.js"
+import pathExpParse from "../../src/lib/pathMatcherParser.js"
 
 describe("path exp parser", () => {
   it("parses simple string", () => {

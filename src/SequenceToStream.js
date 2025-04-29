@@ -6,7 +6,7 @@ import {
   fromIndexToEnd,
   pathSegmentTerminator,
   isPreviousPathInNewPath,
-} from "./utils.js"
+} from "./lib/utils.js"
 
 /**
  * Enum for CONTEXT

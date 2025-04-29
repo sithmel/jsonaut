@@ -6,16 +6,17 @@ import {
   SegmentMatcher,
   SliceMatcher,
   MatcherContainer,
-} from "../../src/pathExp/matcher.js"
+} from "../../src/lib/pathMatcher.js"
 
-import { CachedStringBuffer, Path } from "../../src/pathExp/path.js"
+import { Path } from "../../src/lib/path.js"
+import { CachedString } from "../../src/lib/value.js"
 
 const encoder = new TextEncoder()
 const encodePath = (path) => {
   const obj = new Path()
   obj.array = path.map((v) =>
     typeof v === "string"
-      ? new CachedStringBuffer(encoder.encode(JSON.stringify(v)))
+      ? new CachedString(encoder.encode(JSON.stringify(v)))
       : v,
   )
   return obj

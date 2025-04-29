@@ -1,7 +1,8 @@
 //@ts-check
-import { ParsingError, decodeAndParse, stringifyAndEncode } from "./utils.js"
+import { ParsingError, decodeAndParse, stringifyAndEncode } from "./lib/utils.js"
 import StreamJSONTokenizer, { TOKEN } from "./StreamJSONTokenizer.js"
-import { Path, CachedStringBuffer } from "./pathExp/path.js"
+import { Path } from "./lib/path.js"
+import { CachedString, CachedNumber, CachedSubObject, trueValue, nullValue, falseValue, emptyArrayValue, emptyObjValue, Value } from "./lib/value.js"
 
 
 /**
@@ -18,96 +19,6 @@ const STATE = {
   OPEN_KEY: "OPEN_KEY", // , "a"
   CLOSE_KEY: "CLOSE_KEY", // :
   END: "END", // last state
-}
-
-const ENCODED_VALUES = {
-  TRUE: stringifyAndEncode("true"),
-  FALSE: stringifyAndEncode("false"),
-  NULL: stringifyAndEncode("null"),
-  OBJECT: stringifyAndEncode("{}"),
-  ARRAY: stringifyAndEncode("[]]"),
-}
-
-class CurrentValue {
-  /**
-   * @param {StreamJSONTokenizer} tokenizer - The tokenizer instance
-   * @param {TOKEN} token - The token type
-   * @param {number} startToken - The starting byte of the token
-   * @param {number} endToken - The ending byte of the token
-   */
-  constructor(tokenizer, token, startToken, endToken) {
-    this.tokenizer = tokenizer
-    this.token = token
-    this.startToken = startToken
-    this.endToken = endToken
-    /** @type {Uint8Array | undefined} */
-    this.cachedValue = undefined
-    /** @type {any | undefined} */
-    this.cachedDecodedValue = undefined
-  }
-  getValue() {
-    if (this.cachedValue != undefined) {
-      return this.cachedValue
-    }
-    switch (this.token) {
-      case TOKEN.STRING:
-      case TOKEN.NUMBER:
-      case TOKEN.SUB_OBJECT:
-          this.cachedValue = this.tokenizer.getOutputBuffer(
-          this.startToken,
-          this.endToken,
-        )
-        break
-      case TOKEN.TRUE:
-        this.cachedValue = ENCODED_VALUES.TRUE
-        break
-      case TOKEN.FALSE:
-        this.cachedValue = ENCODED_VALUES.FALSE
-        break
-      case TOKEN.NULL:
-        this.cachedValue = ENCODED_VALUES.NULL
-        break
-      case TOKEN.OPEN_BRACES:
-        this.cachedValue = ENCODED_VALUES.OBJECT
-        break
-      case TOKEN.OPEN_BRACKET:
-        this.cachedValue = ENCODED_VALUES.ARRAY
-        break
-      default:
-        throw new Error("Invalid token type")
-    }
-    return this.cachedValue
-  }
-  getDecodedValue() {
-    if (this.cachedDecodedValue != undefined) {
-      return this.cachedDecodedValue
-    }
-    switch (this.token) {
-      case TOKEN.STRING:
-      case TOKEN.NUMBER:
-      case TOKEN.SUB_OBJECT:
-          this.cachedDecodedValue = decodeAndParse(this.getValue())
-        break
-      case TOKEN.TRUE:
-        this.cachedDecodedValue = true
-        break
-      case TOKEN.FALSE:
-        this.cachedDecodedValue = false
-        break
-      case TOKEN.NULL:
-        this.cachedDecodedValue = null
-        break
-      case TOKEN.OPEN_BRACES:
-        this.cachedDecodedValue = {}
-        break
-      case TOKEN.OPEN_BRACKET:
-        this.cachedDecodedValue = []
-        break
-      default:
-        throw new Error("Invalid token type")
-    }
-    return this.cachedDecodedValue
-  }
 }
 
 /**
@@ -134,11 +45,6 @@ class StreamToSequence {
     this.stateStack = this._initStateStack(startingPath)
     this.currentPath = this._initCurrentPath(startingPath) // a combination of buffers (object keys) and numbers (array index)
     this.stringBuffer = new Uint8Array() // this stores strings temporarily (keys and values)
-
-    /** @type {CurrentValue|undefined}
-     * @private
-     */
-    this.currentValue = undefined
   }
 
   /**
@@ -153,7 +59,7 @@ class StreamToSequence {
     for (const segment of path) {
       currentPath = currentPath.push(
         typeof segment === "string"
-          ? new CachedStringBuffer(encoder.encode(`"${segment}"`))
+          ? new CachedString(encoder.encode(`"${segment}"`))
           : segment,
       )
     }
@@ -206,66 +112,50 @@ class StreamToSequence {
     return this.state === STATE.END
   }
 
-
-  /**
-   * get the current value
-   * @returns {any} - path, value, byte start, and byte end when the value is in the buffer
+    /**
+   * Parse a json or json fragment from a buffer, split in chunks (ArrayBuffers)
+   * and yields a sequence of path/value pairs
+   * It also yields the starting and ending byte of each value
+   * @param {AsyncIterable<Uint8Array>} asyncIterable - an arraybuffer that is a chunk of a stream
+   * @returns {AsyncIterable<Iterable<[Path, Value, number, number]>>} - path, value, byte start, and byte end when the value is in the buffer
    */
-  getCurrentValue() {
-    if (this.currentValue == null) {
-      throw new Error("No current value")
+  async *iter(asyncIterable) {
+    for await (const chunk of asyncIterable) {
+      yield this.iterChunk(chunk)
     }
-    return decodeAndParse(
-      this.tokenizer.getOutputBuffer(this.currentValue.startToken, this.currentValue.endToken),
-    )
   }
-  getCurrentValueEncoded() {
-    if (this.currentValue == null) {
-      throw new Error("No current value")
-    }
-    return this.tokenizer.getOutputBuffer(this.currentValue.startToken, this.currentValue.endToken)
-  }
-  getCurrentPath() {
-    return this.currentPath.toDecoded()
-  }
-  getCurrentPathEncoded() {
-    return this.currentPath
-  }
-
   /**
    * Parse a json or json fragment from a buffer, split in chunks (ArrayBuffers)
    * and yields a sequence of path/value pairs
    * It also yields the starting and ending byte of each value
    * @param {Uint8Array} chunk - an arraybuffer that is a chunk of a stream
-   * @returns {Iterable<[import("./baseTypes").JSONPathType, import("./baseTypes").JSONValueType, number, number]>} - path, value, byte start, and byte end when the value is in the buffer
+   * @returns {Iterable<[Path, Value, number, number]>} - path, value, byte start, and byte end when the value is in the buffer
    */
-  *iter(chunk) {
+  *iterChunk(chunk) {
     for (const [token, startToken, endToken] of this.tokenizer.iter(chunk)) {
       switch (this.state) {
         case STATE.VALUE: // any value
           if (token === TOKEN.STRING) {
-            const value = this.tokenizer.getOutputBuffer(startToken, endToken);
+            const value = 
             yield [
-              this.currentPath.toDecoded(),
-              decodeAndParse(
-                value,
-              ),
+              this.currentPath,
+              new CachedString(this.tokenizer.getOutputBuffer(startToken, endToken)),
               startToken + this.tokenizer.offsetIndexFromBeginning,
               endToken + this.tokenizer.offsetIndexFromBeginning,
             ]
             this.state = this._popState()
           } else if (token === TOKEN.OPEN_BRACES) {
             yield [
-              this.currentPath.toDecoded(),
-              {},
+              this.currentPath,
+              emptyObjValue,
               startToken + this.tokenizer.offsetIndexFromBeginning,
               endToken + this.tokenizer.offsetIndexFromBeginning,
             ]
             this.state = STATE.OPEN_OBJECT
           } else if (token === TOKEN.OPEN_BRACKET) {
             yield [
-              this.currentPath.toDecoded(),
-              [],
+              this.currentPath,
+              emptyArrayValue,
               startToken + this.tokenizer.offsetIndexFromBeginning,
               endToken + this.tokenizer.offsetIndexFromBeginning,
             ]
@@ -278,46 +168,40 @@ class StreamToSequence {
             this.state = this._popState()
           } else if (token === TOKEN.TRUE) {
               yield [
-                this.currentPath.toDecoded(),
-                true,
+                this.currentPath,
+                trueValue,
                 startToken + this.tokenizer.offsetIndexFromBeginning,
                 endToken + this.tokenizer.offsetIndexFromBeginning,
               ]
             this.state = this._popState()
           } else if (token === TOKEN.FALSE) {
             yield [
-              this.currentPath.toDecoded(),
-              false,
+              this.currentPath,
+              falseValue,
               startToken + this.tokenizer.offsetIndexFromBeginning,
               endToken + this.tokenizer.offsetIndexFromBeginning,
             ]
             this.state = this._popState()
           } else if (token === TOKEN.NULL) {
             yield [
-              this.currentPath.toDecoded(),
-              null,
+              this.currentPath,
+              nullValue,
               startToken + this.tokenizer.offsetIndexFromBeginning,
               endToken + this.tokenizer.offsetIndexFromBeginning,
             ]
             this.state = this._popState()
           } else if (token === TOKEN.NUMBER) {
-            const value = this.tokenizer.getOutputBuffer(startToken, endToken)
             yield [
-              this.currentPath.toDecoded(),
-              decodeAndParse(
-                value,
-              ),
+              this.currentPath,
+              new CachedNumber(this.tokenizer.getOutputBuffer(startToken, endToken)),
               startToken + this.tokenizer.offsetIndexFromBeginning,
               endToken + this.tokenizer.offsetIndexFromBeginning,
             ]
             this.state = this._popState()
           } else if (token === TOKEN.SUB_OBJECT) {
-            const value = this.tokenizer.getOutputBuffer(startToken, endToken)
             yield [
-              this.currentPath.toDecoded(),
-              decodeAndParse(
-                value,
-              ),
+              this.currentPath,
+              new CachedSubObject(this.tokenizer.getOutputBuffer(startToken, endToken)),
               startToken + this.tokenizer.offsetIndexFromBeginning,
               endToken + this.tokenizer.offsetIndexFromBeginning,
             ]
@@ -366,7 +250,7 @@ class StreamToSequence {
 
         case STATE.CLOSE_KEY: // after the key is over
           if (token === TOKEN.COLON) {
-            this.currentPath = this.currentPath.push(new CachedStringBuffer(this.stringBuffer))
+            this.currentPath = this.currentPath.push(new CachedString(this.stringBuffer))
             this._pushState(STATE.CLOSE_OBJECT)
             this.state = STATE.VALUE
           } else {

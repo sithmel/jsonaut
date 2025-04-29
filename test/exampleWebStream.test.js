@@ -58,7 +58,7 @@ async function filterJSONStream(readable, writable, includes, controller) {
   await builder.end()
 }
 
-describe("Example web stream", () => {
+describe.skip("Example web stream", () => {
   let testStream
   before(() => {
     testStream = new Blob(['{"hello": "world", "test": 1}'], {

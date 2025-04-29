@@ -27,9 +27,10 @@ describe("StreamToSequence sample files", () => {
       const json = fs.readFileSync(path.join("test", "samples", filename), {
         encoding: "utf-8",
       })
-      for await (const chunk of readStream) {
-        for (const [k, v] of parser.iter(chunk)) {
-          builder.add(k, v)
+
+      for await (const iterable of parser.iter(readStream)) {
+        for (const [k, v] of iterable) {
+          builder.add(k.decoded, v.decoded)
         }
       }
       assert.equal(parser.isFinished(), true)

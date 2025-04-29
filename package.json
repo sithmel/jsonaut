@@ -6,7 +6,7 @@
   "type": "module",
   "types": "types/index.d.mts",
   "scripts": {
-    "test": "node --test test/*.js",
+    "test": "node --test",
     "types": "tsc",
     "format": "prettier --ignore-unknown --write .",
     "build-doc": "typedoc src/*.js src/**/*.js",

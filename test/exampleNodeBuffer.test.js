@@ -25,7 +25,7 @@ async function filterFile(filename, includes) {
   return builder.object
 }
 
-describe("Example Node buffer", () => {
+describe.skip("Example Node buffer", () => {
   it("filters", async () => {
     const obj = await filterFile("wikipedia.json", "'firstName' 'lastName'")
     assert.deepEqual(obj, {

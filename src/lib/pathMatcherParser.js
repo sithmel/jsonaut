@@ -1,13 +1,13 @@
 //@ts-check
 
-import { ParsingError, isWhitespace } from "../utils.js"
+import { ParsingError, isWhitespace } from "./utils.js"
 
 import {
   AnyMatcher,
   SegmentMatcher,
   SliceMatcher,
   MatcherContainer,
-} from "./matcher.js"
+} from "./pathMatcher.js"
 
 const STATE = {
   VALUE: "VALUE",

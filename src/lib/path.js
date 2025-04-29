@@ -1,37 +1,12 @@
 //@ts-check
-import { decodeAndParse } from "../utils.js"
-
-/**
- * @private
- */
-export class CachedStringBuffer {
-  /** @param {Uint8Array} data */
-  constructor(data, cache = null) {
-    this.data = data
-    /** @type {?string} */
-    this.cache = cache
-  }
-  /** @return {import("../baseTypes").JSONSegmentPathType} */
-  toDecoded() {
-    if (this.cache != null) {
-      return this.cache
-    }
-    const cache = decodeAndParse(this.data)
-    this.cache = cache
-    return cache
-  }
-  /** @return {Uint8Array} */
-  get() {
-    return this.data
-  }
-}
+import { CachedString } from "./value.js"
 
 /**
  * @private
  */
 export class Path {
   /**
-   * @param {Array<CachedStringBuffer|number|string>} [array]
+   * @param {Array<CachedString|number>} [array]
    * @param {number} [offset]
    */
   constructor(array = [], offset = 0) {
@@ -44,7 +19,8 @@ export class Path {
     return this.array.length - this.offset
   }
 
-  /** @param {CachedStringBuffer|number|string} segment
+  /** 
+   * @param {CachedString|number} segment
    * @return {Path}
   */
   push(segment) {
@@ -58,14 +34,14 @@ export class Path {
 
   /**
    * @param {number} index
-   * @return {?CachedStringBuffer|number|string}
+   * @return {?CachedString|number}
    */
   get(index) {
     return this.array[index + this.offset]
   }
 
   /**
-   * @param {(arg0: CachedStringBuffer|number|string) => any} func
+   * @param {(arg0: CachedString|number) => any} func
    * @return {Array<any>}
    */
   map(func) {
@@ -89,10 +65,19 @@ export class Path {
   }
 
   /** @return {import("../baseTypes").JSONPathType} */
-  toDecoded() {
+  get decoded() {
     return this.map((segment) => {
-      return segment instanceof CachedStringBuffer
-        ? segment.toDecoded()
+      return segment instanceof CachedString
+        ? segment.decoded
+        : segment
+    })
+  }
+
+  /** @return {Array<Uint8Array|number>} */
+  get encoded() {
+    return this.map((segment) => {
+      return segment instanceof CachedString
+        ? segment.encoded
         : segment
     })
   }

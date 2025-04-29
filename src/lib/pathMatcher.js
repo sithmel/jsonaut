@@ -1,6 +1,7 @@
 //@ts-check
 
-import { Path, CachedStringBuffer } from "./path.js"
+import { Path } from "./path.js"
+import { CachedString } from "./value.js"
 
 /**
  * create spaces for indentation
@@ -91,7 +92,7 @@ export class BaseMatcher {
 
   /**
    * Check if this specific segment matches, without checking the children
-   * @param {?CachedStringBuffer|number|string} _segment
+   * @param {?CachedString|number} _segment
    * @param {boolean} _parentLastPossibleMatch
    * @return {boolean}
    */
@@ -170,7 +171,7 @@ export class BaseMatcher {
 export class AnyMatcher extends BaseMatcher {
   /**
    * Check if this specific segment matches, without checking the children
-   * @param {CachedStringBuffer|number|string} _segment
+   * @param {CachedString|number} _segment
    * @param {boolean} _parentLastPossibleMatch
    * @return {boolean}
    */
@@ -212,7 +213,7 @@ export class SegmentMatcher extends BaseMatcher {
   }
   /**
    * Check if this specific segment matches, without checking the children
-   * @param {CachedStringBuffer|number|string} segment
+   * @param {CachedString|number} segment
    * @return {boolean}
    */
   _doesMatch(segment) {
@@ -227,9 +228,9 @@ export class SegmentMatcher extends BaseMatcher {
     }
     if (
       this.segmentMatchEncoded instanceof Uint8Array &&
-      segment instanceof CachedStringBuffer
+      segment instanceof CachedString
     ) {
-      const buffer = segment.get()
+      const buffer = segment.encoded
       return (
         this.segmentMatchEncoded.byteLength === buffer.byteLength &&
         this.segmentMatchEncoded.every(
@@ -241,7 +242,7 @@ export class SegmentMatcher extends BaseMatcher {
   }
   /**
    * Check if this specific segment matches, without checking the children
-   * @param {CachedStringBuffer|number|string} segment
+   * @param {CachedString|number} segment
    * @param {boolean} parentLastPossibleMatch
    * @return {boolean}
    */
@@ -301,7 +302,7 @@ export class SliceMatcher extends BaseMatcher {
   }
   /**
    * Check if this specific segment matches, without checking the children
-   * @param {CachedStringBuffer|number|string} segment
+   * @param {CachedString|number} segment
    * @param {boolean} parentLastPossibleMatch
    * @return {boolean}
    */

@@ -11,7 +11,7 @@ import {
   isPreviousPathInNewPath,
   decodeAndParse,
   stringifyAndEncode,
-} from "../src/utils.js"
+} from "../../src/lib/utils.js"
 
 describe("utils", () => {
   describe("isArrayOrObject", () => {

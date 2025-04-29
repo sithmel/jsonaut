@@ -1,6 +1,6 @@
 //@ts-check
 
-import { ParsingError } from "./utils.js"
+import { ParsingError } from "./lib/utils.js"
 
 /**
  * Enum for character codes

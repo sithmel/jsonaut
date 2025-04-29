@@ -43,8 +43,8 @@ export function isArrayOrObject(value) {
 /**
  * Return oldPath and newPath excluding the common part
  * @private
- * @param {import("./baseTypes").JSONPathType} oldPath
- * @param {import("./baseTypes").JSONPathType} newPath
+ * @param {import("../baseTypes").JSONPathType} oldPath
+ * @param {import("../baseTypes").JSONPathType} newPath
  * @returns {number}
  */
 export function getCommonPathIndex(oldPath, newPath) {
@@ -60,8 +60,8 @@ export function getCommonPathIndex(oldPath, newPath) {
 /**
  * Check if oldPath is contained in the new path
  * @private
- * @param {import("./baseTypes").JSONPathType} oldPath
- * @param {import("./baseTypes").JSONPathType} newPath
+ * @param {import("../baseTypes").JSONPathType} oldPath
+ * @param {import("../baseTypes").JSONPathType} newPath
  * @returns {boolean}
  */
 export function isPreviousPathInNewPath(oldPath, newPath) {
@@ -78,7 +78,7 @@ export function isPreviousPathInNewPath(oldPath, newPath) {
 /**
  * Transform a value in JSON
  * @private
- * @param {import("./baseTypes").JSONValueType} value
+ * @param {import("../baseTypes").JSONValueType} value
  * @returns {string}
  */
 export function valueToString(value) {
@@ -126,7 +126,7 @@ export function* fromIndexToEnd(array, index) {
 /**
  * "}" or "]"
  * @private
- * @param {import("./baseTypes").JSONSegmentPathType} pathSegment
+ * @param {import("../baseTypes").JSONSegmentPathType} pathSegment
  * @returns {string}
  */
 export function pathSegmentTerminator(pathSegment) {
