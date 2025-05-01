@@ -4,6 +4,8 @@ import { describe, it, before } from "node:test"
 
 import StreamToSequence from "../src/StreamToSequence.js"
 import SequenceToStream from "../src/SequenceToStream.js"
+import { forEach } from "batch-iterable"
+import streamToSequenceIncludes from "../src/streamToSequenceIncludes.js"
 
 
 /**
@@ -40,25 +42,25 @@ function getTestWritableStream(output) {
  * @param {AbortController} controller
  */
 async function filterJSONStream(readable, writable, includes, controller) {
-  const encoder = new TextEncoder()
   const writer = writable.getWriter()
 
-  const parser = new StreamToSequence({ includes })
+  const parser = new StreamToSequence()
+  const sequence = parser.iter(readable)
+  const filteredSequence = streamToSequenceIncludes(sequence, includes)
+
   const builder = new SequenceToStream({
     onData: async (data) => writer.write(data),
   })
 
-  for await (const chunk of readable) {
-    for (const [path, value] of parser.iter(chunk)) {
-      builder.add(path, value)
-    }
-  }
+  await forEach(filteredSequence, ([path, value]) => {
+    builder.add(path.decoded, value.decoded)
+  })
 
   controller.abort()
   await builder.end()
 }
 
-describe.skip("Example web stream", () => {
+describe("Example web stream", () => {
   let testStream
   before(() => {
     testStream = new Blob(['{"hello": "world", "test": 1}'], {

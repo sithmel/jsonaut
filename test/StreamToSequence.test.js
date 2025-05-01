@@ -4,6 +4,8 @@ import { describe, it, beforeEach } from "node:test"
 import { Path } from "../src/lib/path.js"
 import { Value } from "../src/lib/value.js"
 import StreamToSequence from "../src/StreamToSequence.js"
+import { reduce, iterableToBatchIterable } from "batch-iterable"
+import streamToSequenceIncludes from "../src/streamToSequenceIncludes.js"
 
 /**
  * @param {[Path, Value, number, number]} pathAndValue
@@ -278,6 +280,15 @@ describe("StreamToSequence", () => {
   describe.skip("includes", () => {
     beforeEach(() => {
       parser = new StreamToSequence({ includes: "'test1'('test2')" })
+      const encoder = new TextEncoder()
+      return (text) => {
+        const buffer = encoder.encode(text)
+        const iterable = iterableToBatchIterable([buffer])
+        parser.iter(iterable)
+
+      }
+        Array.from(parser.iterChunk(encoder.encode(text))).map(decodePathAndValue)
+    
       parserIter = parserToSeq(parser)
     })
 

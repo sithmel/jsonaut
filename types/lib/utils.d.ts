@@ -15,26 +15,26 @@ export function isArrayOrObject(value: any): boolean;
 /**
  * Return oldPath and newPath excluding the common part
  * @private
- * @param {import("./baseTypes").JSONPathType} oldPath
- * @param {import("./baseTypes").JSONPathType} newPath
+ * @param {import("../baseTypes").JSONPathType} oldPath
+ * @param {import("../baseTypes").JSONPathType} newPath
  * @returns {number}
  */
-export function getCommonPathIndex(oldPath: import("./baseTypes").JSONPathType, newPath: import("./baseTypes").JSONPathType): number;
+export function getCommonPathIndex(oldPath: import("../baseTypes").JSONPathType, newPath: import("../baseTypes").JSONPathType): number;
 /**
  * Check if oldPath is contained in the new path
  * @private
- * @param {import("./baseTypes").JSONPathType} oldPath
- * @param {import("./baseTypes").JSONPathType} newPath
+ * @param {import("../baseTypes").JSONPathType} oldPath
+ * @param {import("../baseTypes").JSONPathType} newPath
  * @returns {boolean}
  */
-export function isPreviousPathInNewPath(oldPath: import("./baseTypes").JSONPathType, newPath: import("./baseTypes").JSONPathType): boolean;
+export function isPreviousPathInNewPath(oldPath: import("../baseTypes").JSONPathType, newPath: import("../baseTypes").JSONPathType): boolean;
 /**
  * Transform a value in JSON
  * @private
- * @param {import("./baseTypes").JSONValueType} value
+ * @param {import("../baseTypes").JSONValueType} value
  * @returns {string}
  */
-export function valueToString(value: import("./baseTypes").JSONValueType): string;
+export function valueToString(value: import("../baseTypes").JSONValueType): string;
 /**
  * Yields item arrays from end back to index, yield true on last
  * @private
@@ -56,10 +56,10 @@ export function fromIndexToEnd<T>(array: Array<T>, index: number): Iterable<[num
 /**
  * "}" or "]"
  * @private
- * @param {import("./baseTypes").JSONSegmentPathType} pathSegment
+ * @param {import("../baseTypes").JSONSegmentPathType} pathSegment
  * @returns {string}
  */
-export function pathSegmentTerminator(pathSegment: import("./baseTypes").JSONSegmentPathType): string;
+export function pathSegmentTerminator(pathSegment: import("../baseTypes").JSONSegmentPathType): string;
 /**
  * @private
  * @param {Uint8Array} buffer

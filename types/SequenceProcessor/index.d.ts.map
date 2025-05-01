@@ -1,0 +1,1 @@
+{"version":3,"file":"index.d.ts","sourceRoot":"","sources":["../../src/SequenceProcessor/index.js"],"names":[],"mappings":"AAMA;IACE;;OAEG;IACH,sBAFW,aAAa,CAAC,QAAQ,CAAC,CAAC,IAAI,EAAE,KAAK,EAAE,MAAM,EAAE,MAAM,CAAC,CAAC,CAAC,EAIhE;IAED;;;OAGG;IACH,qBAHW,MAAM,GACJ,aAAa,CAAC,QAAQ,CAAC,CAAC,IAAI,EAAE,KAAK,EAAE,MAAM,EAAE,MAAM,CAAC,CAAC,CAAC,CAIlE;CACF;qBApBoB,gBAAgB;sBACf,iBAAiB"}

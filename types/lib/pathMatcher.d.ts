@@ -48,11 +48,11 @@ export class BaseMatcher {
     _isLastPossibleMatch: boolean;
     /**
      * Check if this specific segment matches, without checking the children
-     * @param {?CachedStringBuffer|number|string} _segment
+     * @param {?CachedString|number} _segment
      * @param {boolean} _parentLastPossibleMatch
      * @return {boolean}
      */
-    doesSegmentMatch(_segment: (CachedStringBuffer | number | string) | null, _parentLastPossibleMatch: boolean): boolean;
+    doesSegmentMatch(_segment: (CachedString | number) | null, _parentLastPossibleMatch: boolean): boolean;
     /**
      * Check for match
      * @param {Path} path
@@ -84,11 +84,11 @@ export class BaseMatcher {
 export class AnyMatcher extends BaseMatcher {
     /**
      * Check if this specific segment matches, without checking the children
-     * @param {CachedStringBuffer|number|string} _segment
+     * @param {CachedString|number} _segment
      * @param {boolean} _parentLastPossibleMatch
      * @return {boolean}
      */
-    doesSegmentMatch(_segment: CachedStringBuffer | number | string, _parentLastPossibleMatch: boolean): boolean;
+    doesSegmentMatch(_segment: CachedString | number, _parentLastPossibleMatch: boolean): boolean;
 }
 /**
  * @private
@@ -105,17 +105,17 @@ export class SegmentMatcher extends BaseMatcher {
     segmentMatchEncoded: number | Uint8Array<ArrayBufferLike>;
     /**
      * Check if this specific segment matches, without checking the children
-     * @param {CachedStringBuffer|number|string} segment
+     * @param {CachedString|number} segment
      * @return {boolean}
      */
-    _doesMatch(segment: CachedStringBuffer | number | string): boolean;
+    _doesMatch(segment: CachedString | number): boolean;
     /**
      * Check if this specific segment matches, without checking the children
-     * @param {CachedStringBuffer|number|string} segment
+     * @param {CachedString|number} segment
      * @param {boolean} parentLastPossibleMatch
      * @return {boolean}
      */
-    doesSegmentMatch(segment: CachedStringBuffer | number | string, parentLastPossibleMatch: boolean): boolean;
+    doesSegmentMatch(segment: CachedString | number, parentLastPossibleMatch: boolean): boolean;
 }
 /**
  * @private
@@ -135,12 +135,12 @@ export class SliceMatcher extends BaseMatcher {
     max: number;
     /**
      * Check if this specific segment matches, without checking the children
-     * @param {CachedStringBuffer|number|string} segment
+     * @param {CachedString|number} segment
      * @param {boolean} parentLastPossibleMatch
      * @return {boolean}
      */
-    doesSegmentMatch(segment: CachedStringBuffer | number | string, parentLastPossibleMatch: boolean): boolean;
+    doesSegmentMatch(segment: CachedString | number, parentLastPossibleMatch: boolean): boolean;
 }
 import { Path } from "./path.js";
-import { CachedStringBuffer } from "./path.js";
-//# sourceMappingURL=matcher.d.ts.map
+import { CachedString } from "./value.js";
+//# sourceMappingURL=pathMatcher.d.ts.map
