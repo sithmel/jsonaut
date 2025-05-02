@@ -1,21 +1,23 @@
 //@ts-check
 import { Path } from "../lib/path.js"
 import { Value } from "../lib/value.js"
-import {BatchIterable} from 'batch-iterable'
+import {GenericBatchIterable} from 'batch-iterable'
 import includes from './includes.js'
 import SequenceToObject from "../SequenceToObject.js"
 import SequenceToStream from "../SequenceToStream.js"
 
 /**
- * @extends {BatchIterable<[Path, Value, number, number]>}
+ * @extends {GenericBatchIterable<[Path, Value, number, number]>}
  */
-export default class SequenceProcessor extends BatchIterable {
+export default class SequenceProcessor extends GenericBatchIterable {
   /**
-   * @param {string} expression
+   * @param {string} [expression]
    * @returns {this}
    */
   includes(expression) {
-    this.iterable = includes(this.iterable, expression)
+    if (expression != null){
+      this.iterable = includes(this.iterable, expression)
+    }
     return this
   }
 

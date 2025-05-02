@@ -116,7 +116,7 @@ class StreamToSequence {
    * Parse a json or json fragment from a buffer, split in chunks (ArrayBuffers)
    * and yields a sequence of path/value pairs
    * It also yields the starting and ending byte of each value
-   * @param {AsyncIterable<Uint8Array>} asyncIterable - an arraybuffer that is a chunk of a stream
+   * @param {AsyncIterable<Uint8Array> | Iterable<Uint8Array>} asyncIterable - an arraybuffer that is a chunk of a stream
    * @returns {AsyncIterable<Iterable<[Path, Value, number, number]>>} - path, value, byte start, and byte end when the value is in the buffer
    */
   async *iter(asyncIterable) {

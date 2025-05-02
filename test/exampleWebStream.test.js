@@ -2,10 +2,7 @@
 import assert from "assert"
 import { describe, it, before } from "node:test"
 
-import StreamToSequence from "../src/StreamToSequence.js"
-import SequenceToStream from "../src/SequenceToStream.js"
-import { forEach } from "batch-iterable"
-import streamToSequenceIncludes from "../src/streamToSequenceIncludes.js"
+import {JSONaut} from "../src/index.js"
 
 
 /**
@@ -43,21 +40,13 @@ function getTestWritableStream(output) {
  */
 async function filterJSONStream(readable, writable, includes, controller) {
   const writer = writable.getWriter()
-
-  const parser = new StreamToSequence()
-  const sequence = parser.iter(readable)
-  const filteredSequence = streamToSequenceIncludes(sequence, includes)
-
-  const builder = new SequenceToStream({
-    onData: async (data) => writer.write(data),
-  })
-
-  await forEach(filteredSequence, ([path, value]) => {
-    builder.add(path.decoded, value.decoded)
-  })
+  await JSONaut(readable)
+    .includes(includes)
+    .toStream(async (data) => {
+      await writer.write(data)
+    })
 
   controller.abort()
-  await builder.end()
 }
 
 describe("Example web stream", () => {
