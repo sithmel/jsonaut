@@ -1,5 +1,5 @@
 //@ts-check
-import { decodeAndParse, stringifyAndEncode } from "./utils.js"
+import { decodeAndParse, stringifyAndEncode, isArrayOrObject } from "./utils.js"
 
 export class Value {
   /** @return {any} */
@@ -9,7 +9,7 @@ export class Value {
   /** @return {Uint8Array} */
   get encoded() {
     throw new Error("Not implemented")
-  }    
+  }
 }
 
 export class True extends Value {
@@ -20,7 +20,7 @@ export class True extends Value {
   /** @return {Uint8Array} */
   get encoded() {
     return stringifyAndEncode(true)
-  }  
+  }
 }
 
 export class False extends Value {
@@ -99,3 +99,30 @@ export const trueValue = new True()
 export const nullValue = new Null()
 export const emptyObjValue = new EmptyObj()
 export const emptyArrayValue = new EmptyArray()
+
+/**
+ * 
+ * @param {any} value 
+ * @returns {Value}
+ */
+export function getValueObjectFromJSONValue(value) {
+  if (value == null) {
+    return nullValue
+  }
+  if (value === true) {
+    return trueValue
+  }
+  if (value === false) {
+    return falseValue
+  }
+  if (isArrayOrObject(value)) {
+    return new CachedSubObject(stringifyAndEncode(value))
+  }
+  if (typeof value === "string") {
+    return new CachedString(stringifyAndEncode(value))
+  }
+  if (typeof value === "number") {
+    return new CachedNumber(stringifyAndEncode(value))
+  }
+  throw new Error("Unsupported value type")
+}

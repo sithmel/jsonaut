@@ -10,13 +10,13 @@ import {
 
 import { Path } from "../../src/lib/path.js"
 import { CachedString } from "../../src/lib/value.js"
+import { stringifyAndEncode } from "../../src/lib/utils.js"
 
-const encoder = new TextEncoder()
 const encodePath = (path) => {
   const obj = new Path()
   obj.array = path.map((v) =>
     typeof v === "string"
-      ? new CachedString(encoder.encode(JSON.stringify(v)))
+      ? new CachedString(stringifyAndEncode(v))
       : v,
   )
   return obj

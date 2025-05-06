@@ -42,7 +42,7 @@ export default class SequenceProcessor extends GenericBatchIterable {
   async toStream(onData) {
     const builder = new SequenceToStream({onData})
     await this.forEach(([path, value]) => {
-      builder.add(path.decoded, value.decoded)
+      builder.add(path, value)
     })
 
     await builder.end()

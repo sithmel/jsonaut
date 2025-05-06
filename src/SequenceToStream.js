@@ -1,12 +1,26 @@
 //@ts-check
 import {
   getCommonPathIndex,
-  valueToString,
+  valueToBuffer,
   fromEndToIndex,
   fromIndexToEnd,
   pathSegmentTerminator,
   isPreviousPathInNewPath,
+  OPEN_BRACES,
+  CLOSE_BRACES,
+  OPEN_BRACKET,
+  CLOSE_BRACKET,
+  COMMA,
+  COLON,
 } from "./lib/utils.js"
+
+import { Path } from "./lib/path.js"
+import {
+  CachedString,
+  Value,
+  EmptyArray,
+  EmptyObj
+} from "./lib/value.js"
 
 /**
  * Enum for CONTEXT
@@ -27,32 +41,28 @@ class SequenceToStream {
   /**
    * Convert a sequence of path value pairs to a stream of bytes
    * @param {Object} options
-   * @param {boolean} [options.compactArrays=false] - if true ignore array index and generates arrays without gaps
    * @param {(arg0: Uint8Array) => Promise<void>} options.onData - function called when a new sequence of bytes is returned
    */
-  constructor({ onData, compactArrays = false }) {
-    /** @type {import("./baseTypes").JSONPathType} */
-    this.currentPath = []
+  constructor({ onData }) {
+    this.currentPath = new Path()
     this.onData = onData
     /** @type CONTEXT */
     this.context = CONTEXT.NULL
     this.lastWritePromise = Promise.resolve()
-    this.compactArrays = compactArrays
-    this.encoder = new TextEncoder()
   }
 
   /**
    * @private
-   * @param {string} str
+   * @param {Uint8Array} buffer
    */
-  async _output(str) {
+  async _output(buffer) {
     await this.lastWritePromise
-    this.lastWritePromise = this.onData(this.encoder.encode(str))
+    this.lastWritePromise = this.onData(buffer)
   }
   /**
    * add a new path value pair
-   * @param {import("./baseTypes").JSONPathType} path - an array of path segments
-   * @param {import("./baseTypes").JSONValueType} value - the value at the corresponding path
+   * @param {Path} path - an array of path segments
+   * @param {Value} value - the value at the corresponding path
    * @returns {void}
    */
   add(path, value) {
@@ -70,17 +80,17 @@ class SequenceToStream {
       previousPath.length === 0 &&
       path.length > 0
     ) {
-      if (typeof path[0] === "number") {
-        this._output("[")
+      if (typeof path.get(0) === "number") {
+        this._output(OPEN_BRACKET)
       } else {
-        this._output("{")
+        this._output(OPEN_BRACES)
       }
     }
     if (!isPreviousPathInNewPath(previousPath, path)) {
       if (this.context === CONTEXT.OBJECT) {
-        this._output("}")
+        this._output(CLOSE_BRACES)
       } else if (this.context === CONTEXT.ARRAY) {
-        this._output("]")
+        this._output(CLOSE_BRACKET)
       }
     }
     // close all opened path in reverse order
@@ -89,7 +99,7 @@ class SequenceToStream {
       commonPathIndex,
     )) {
       if (index === commonPathIndex) {
-        this._output(",")
+        this._output(COMMA)
       } else {
         this._output(pathSegmentTerminator(pathSegment))
       }
@@ -97,11 +107,13 @@ class SequenceToStream {
     // open the new paths
     for (const [index, pathSegment] of fromIndexToEnd(path, commonPathIndex)) {
       if (typeof pathSegment === "number") {
-        this._output(`${index === commonPathIndex ? "" : "["}`)
+        if (index !== commonPathIndex) {
+          this._output(OPEN_BRACKET)
+        }
 
         const previousIndex =
-          index === commonPathIndex ? (previousPath[commonPathIndex] ?? -1) : -1
-        if (typeof previousIndex === "string") {
+          index === commonPathIndex ? (previousPath.get(commonPathIndex) ?? -1) : -1
+        if (previousIndex instanceof CachedString) {
           throw new Error(
             `Mixing up array index and object keys is not allowed: before ${previousIndex} then ${pathSegment} in [${path}]`,
           )
@@ -111,23 +123,18 @@ class SequenceToStream {
             `Index are in the wrong order: before ${previousIndex} then ${pathSegment} in [${path}]`,
           )
         }
-        if (!this.compactArrays) {
-          const numberOfNulls = pathSegment - (previousIndex + 1)
-          if (numberOfNulls > 0) {
-            this._output(Array(numberOfNulls).fill("null").join(",") + ",")
-          }
-        }
-      } else {
-        this._output(
-          `${index === commonPathIndex ? "" : "{"}${valueToString(
+      } else if (pathSegment instanceof CachedString) {
+        if (index !== commonPathIndex) {
+          this._output(OPEN_BRACES)
+          this._output(valueToBuffer(
             pathSegment,
-          )}:`,
-        )
+          ))
+          this._output(COLON)
+        }
       }
     }
-    const v = valueToString(value)
-    this.context =
-      v === "{" ? CONTEXT.OBJECT : v === "[" ? CONTEXT.ARRAY : CONTEXT.NULL
+    const v = valueToBuffer(value)
+    this.context = v instanceof EmptyObj ? CONTEXT.OBJECT : v instanceof EmptyArray ? CONTEXT.ARRAY : CONTEXT.NULL
     this._output(v)
   }
 
@@ -137,9 +144,9 @@ class SequenceToStream {
    */
   async end() {
     if (this.context === CONTEXT.OBJECT) {
-      this._output("}")
+      this._output(CLOSE_BRACES)
     } else if (this.context === CONTEXT.ARRAY) {
-      this._output("]")
+      this._output(CLOSE_BRACKET)
     }
     // all opened path in reverse order
     for (const [_index, pathSegment] of fromEndToIndex(this.currentPath, 0)) {

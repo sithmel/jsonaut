@@ -1,6 +1,8 @@
 //@ts-check
 export { default as ObjectToSequence } from "./ObjectToSequence.js"
 export { default as getPathMatcher } from "./lib/pathMatcherParser.js"
+export { Path } from "./lib/path.js"
+export { Value } from "./lib/value.js"
 
 import StreamToSequence from "./StreamToSequence.js"
 import SequenceProcessor from "./SequenceProcessor/index.js"

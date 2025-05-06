@@ -13,7 +13,7 @@ describe("ObjParser", () => {
     const parser = new ObjectToSequence()
     parse = (obj) => {
       for (const [path, value] of parser.iter(obj)) {
-        builder.add(path, value)
+        builder.add(path.decoded, value.decoded)
       }
     }
   })
@@ -31,7 +31,10 @@ describe("ObjParser", () => {
     let parserIter
     beforeEach(() => {
       const parser = new ObjectToSequence({ maxDepth: 1 })
-      parserIter = (obj) => Array.from(parser.iter(obj))
+      parserIter = (obj) => Array.from(parser.iter(obj)).map(([path, value]) => [
+        path.decoded,
+        value.decoded,
+      ])
     })
 
     it("works with object nested into object (1)", () => {

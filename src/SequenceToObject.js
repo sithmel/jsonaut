@@ -1,7 +1,10 @@
 //@ts-check
+import { Path } from "./lib/path.js"
+import { Value, CachedString } from "./lib/value.js"
+
 /**
  * @private
- * @param {import("./baseTypes").JSONSegmentPathType} pathSegment
+ * @param {CachedString|number} pathSegment
  * @returns {{}|[]}
  */
 function initObject(pathSegment) {
@@ -14,39 +17,35 @@ function initObject(pathSegment) {
 class SequenceToObject {
   /**
    * Convert a sequence to a js object
-   * @param {Object} options
-   * @param {boolean} [options.compactArrays=false] - if true ignore array index and generates arrays without gaps
    */
-  constructor(options = {}) {
-    const { compactArrays } = options
+  constructor() {
     this.object = undefined
-    this.compactArrays = compactArrays ?? false
-
     this.lastArray = undefined
     this.lastArrayIndex = undefined
   }
 
   /**
    * @private
-   * @param {import("./baseTypes").JSONSegmentPathType} pathSegment
-   * @param {import("./baseTypes").JSONValueType} currentObject
-   * @returns {import("./baseTypes").JSONSegmentPathType}
+   * @param {CachedString|number|null} pathSegment
+   * @param {Value} currentObject
+   * @returns {CachedString|number}
    */
   _calculateRealIndex(pathSegment, currentObject) {
-    if (typeof pathSegment === "string" || !this.compactArrays) {
-      return pathSegment
+    if (pathSegment instanceof CachedString) {
+      return pathSegment.decoded
     }
-    if (Array.isArray(currentObject)) {
+    const value = currentObject.decoded
+    if (Array.isArray(value)) {
       // copy values locally
       const lastArray = this.lastArray
       const lastArrayIndex = this.lastArrayIndex
       // update with new values
-      this.lastArray = currentObject
+      this.lastArray = value
       this.lastArrayIndex = pathSegment
-      if (currentObject === lastArray && lastArrayIndex === pathSegment) {
-        return currentObject.length - 1
+      if (value === lastArray && lastArrayIndex === pathSegment) {
+        return value.length - 1
       }
-      return currentObject.length
+      return value.length
     }
     return 0
   }
@@ -62,27 +61,31 @@ class SequenceToObject {
 
   /**
    * Update the object with a new path value pairs
-   * @param {import("./baseTypes").JSONPathType} path - an array of path segments
-   * @param {import("./baseTypes").JSONValueType} value - the value corresponding to the path
-   * @returns {void}
+   * @param {Path} path - an array of path segments
+   * @param {Value} value - the value corresponding to the path
+   * @returns {this}
    */
   add(path, value) {
     if (path.length === 0) {
-      this.object = value
-      return
+      this.object = value.decoded
+      return this
     }
     if (this.object === undefined) {
-      this.object = initObject(path[0])
+      const firstPathSegment = path.get(0)
+      if (firstPathSegment == undefined) {
+        throw new Error("Path cannot be empty empty")
+      }
+      this.object = initObject(firstPathSegment)
     }
     let currentObject = this.object
     for (let i = 0; i < path.length - 1; i++) {
       // ignoring type errors here:
       // if path is inconsistent with data, it should throw an exception
       const currentPathSegment = this._calculateRealIndex(
-        path[i],
+        path.get(i),
         currentObject,
       )
-      const nextPathSegment = path[i + 1]
+      const nextPathSegment = path.get(i + 1)
       // @ts-ignore
       if (currentObject[currentPathSegment] === undefined) {
         // @ts-ignore
@@ -93,11 +96,12 @@ class SequenceToObject {
     }
     // @ts-ignore
     const currentPathSegment = this._calculateRealIndex(
-      path[path.length - 1],
+      path.get(path.length - 1),
       currentObject,
     )
     // @ts-ignore
-    currentObject[currentPathSegment] = value
+    currentObject[currentPathSegment] = value.decoded
+    return this
   }
 }
 export default SequenceToObject

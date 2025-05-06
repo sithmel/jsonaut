@@ -1,4 +1,5 @@
 //@ts-check
+import { stringifyAndEncode } from "./utils.js"
 import { CachedString } from "./value.js"
 
 /**
@@ -81,4 +82,16 @@ export class Path {
         : segment
     })
   }
+}
+
+/**
+ * 
+ * @param {import("../baseTypes").JSONPathType} path 
+ * @returns {Path}
+ */
+export function JSONPathToPath(path) {
+  const arrayEncoded = path.map((v) =>
+    typeof v === "number" ? v : new CachedString(stringifyAndEncode(v)),
+  )
+  return new Path(arrayEncoded)
 }
