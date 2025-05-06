@@ -14,7 +14,6 @@ describe("SequenceToObject", () => {
   })
   it("works with simple attributes", () => {
     const builder = new SequenceToObject()
-    builder.add([], {})
     builder.add(["b"], 2)
     assert.deepEqual(builder.object, { b: 2 })
   })
@@ -31,25 +30,21 @@ describe("SequenceToObject", () => {
   })
   it("silently convert numbers", () => {
     const builder = new SequenceToObject()
-    builder.add(["a"], {})
     builder.add(["a", 0], 3)
-    assert.deepEqual(builder.object, { a: { 0: 3 } })
+    assert.deepEqual(builder.object, { a: [3] })
   })
   it("reconstructs arrays", () => {
     const builder = new SequenceToObject()
-    builder.add(["a"], [])
     builder.add(["a", 3], 3)
     assert.deepEqual(builder.object, { a: [, , , 3] })
   })
   it("compacts arrays", () => {
     const builder = new SequenceToObject({ compactArrays: true })
-    builder.add(["a"], [])
     builder.add(["a", 3], 3)
     assert.deepEqual(builder.object, { a: [3] })
   })
   it("compacts arrays (2)", () => {
     const builder = new SequenceToObject({ compactArrays: true })
-    builder.add(["collection", 2], {})
     builder.add(["collection", 2, "brand"], "Rolls Royce")
     builder.add(["collection", 2, "number"], 8)
     assert.deepEqual(builder.object, {
@@ -86,20 +81,17 @@ describe("SequenceToObject", () => {
   describe("chunks", () => {
     it("works with object nested into object (1)", () => {
       const builder = new SequenceToObject({ compactArrays: true })
-      builder.add([], {})
       builder.add(["test1"], { test2: 1 })
       assert.deepEqual(builder.object, { test1: { test2: 1 } })
     })
     it("works with object nested into object (2)", () => {
       const builder = new SequenceToObject({ compactArrays: true })
-      builder.add([], {})
       builder.add(["test1"], { test2: 1 })
       builder.add(["test3"], 2)
       assert.deepEqual(builder.object, { test1: { test2: 1 }, test3: 2 })
     })
     it("works with object nested into arrays (1)", () => {
       const builder = new SequenceToObject({ compactArrays: true })
-      builder.add([], [])
       builder.add([0], { test1: 1 })
       builder.add([1], { test2: 2 })
       assert.deepEqual(builder.object, [{ test1: 1 }, { test2: 2 }])
@@ -107,7 +99,6 @@ describe("SequenceToObject", () => {
 
     it("works with object nested into arrays (2)", () => {
       const builder = new SequenceToObject({ compactArrays: true })
-      builder.add([], [])
       builder.add([0], { test1: [1, "xyz"] })
       builder.add([1], { test2: 2 })
       assert.deepEqual(builder.object, [{ test1: [1, "xyz"] }, { test2: 2 }])

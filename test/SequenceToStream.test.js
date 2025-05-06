@@ -131,7 +131,6 @@ describe("SequenceToStream", () => {
     it("compacts arrays", () =>
       testSequence(
         [
-          [["collection", 2], {}],
           [["collection", 2, "brand"], "Rolls Royce"],
           [["collection", 2, "number"], 8],
         ],
@@ -169,7 +168,6 @@ describe("SequenceToStream", () => {
     it("works with object nested into object (1)", () =>
       testSequence(
         [
-          [[], {}],
           [["test1"], { test2: 1 }],
         ],
         { test1: { test2: 1 } },
@@ -178,7 +176,6 @@ describe("SequenceToStream", () => {
     it("works with object nested into object (2)", () =>
       testSequence(
         [
-          [[], {}],
           [["test1"], { test2: 1 }],
           [["test3"], 2],
         ],
@@ -188,7 +185,6 @@ describe("SequenceToStream", () => {
     it("works with object nested into arrays (1)", () =>
       testSequence(
         [
-          [[], []],
           [[0], { test1: 1 }],
           [[1], { test2: 2 }],
         ],
@@ -198,7 +194,6 @@ describe("SequenceToStream", () => {
     it("works with object nested into arrays (2)", () =>
       testSequence(
         [
-          [[], []],
           [[0], { test1: [1, "xyz"] }],
           [[1], { test2: 2 }],
         ],

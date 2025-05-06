@@ -82,16 +82,6 @@ export function isPreviousPathInNewPath(oldPath, newPath) {
  * @returns {string}
  */
 export function valueToString(value) {
-  if (isArrayOrObject(value)) {
-    if (value !== null && Object.keys(value).length !== 0) {
-      return JSON.stringify(value)
-    }
-    if (Array.isArray(value)) {
-      return "["
-    } else {
-      return "{"
-    }
-  }
   return JSON.stringify(value)
 }
 

@@ -35,13 +35,17 @@ class ObjectToSequence {
     if (isArrayOrObject(obj) && currentPath.length < this.maxDepth) {
       let pathSegmentsAndValues
       if (Array.isArray(obj)) {
-        if (this.matcher.doesMatch(currentPath)) {
-          yield [currentPath.toDecoded(), []]
+        if (obj.length === 0) {
+          if (this.matcher.doesMatch(currentPath)) {
+            yield [currentPath.toDecoded(), []]
+          }
         }
         pathSegmentsAndValues = obj.map((v, i) => [i, v])
       } else {
-        if (this.matcher.doesMatch(currentPath)) {
-          yield [currentPath.toDecoded(), {}]
+        if (Object.keys(obj).length === 0) {
+          if (this.matcher.doesMatch(currentPath)) {
+            yield [currentPath.toDecoded(), {}]
+          }
         }
         pathSegmentsAndValues = Object.entries(obj)
       }

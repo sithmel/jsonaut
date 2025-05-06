@@ -49,8 +49,6 @@ describe("utils", () => {
       assert.equal(getCommonPathIndex(["x", "a", "b"], ["x", "y", "z"]), 1))
   })
   describe("valueToString", () => {
-    it("works with obj", () => assert.equal(valueToString({}), "{"))
-    it("works with array", () => assert.equal(valueToString([]), "["))
     it("works with null", () => assert.equal(valueToString(null), "null"))
     it("works with string", () =>
       assert.equal(valueToString("hello"), '"hello"'))
