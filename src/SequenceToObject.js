@@ -21,34 +21,33 @@ class SequenceToObject {
     const { compactArrays } = options
     this.object = undefined
     this.compactArrays = compactArrays ?? false
-
-    this.lastArray = undefined
-    this.lastArrayIndex = undefined
+    /** @type {import("./baseTypes").JSONPathType} */
+    this.previousPath = []
   }
 
   /**
    * @private
    * @param {import("./baseTypes").JSONSegmentPathType} pathSegment
+   * @param {import("./baseTypes").JSONSegmentPathType} previousPathSegment
    * @param {import("./baseTypes").JSONValueType} currentObject
    * @returns {import("./baseTypes").JSONSegmentPathType}
    */
-  _calculateRealIndex(pathSegment, currentObject) {
+  _calculateRealIndex(pathSegment, previousPathSegment, currentObject) {
     if (typeof pathSegment === "string" || !this.compactArrays) {
       return pathSegment
     }
-    if (Array.isArray(currentObject)) {
-      // copy values locally
-      const lastArray = this.lastArray
-      const lastArrayIndex = this.lastArrayIndex
-      // update with new values
-      this.lastArray = currentObject
-      this.lastArrayIndex = pathSegment
-      if (currentObject === lastArray && lastArrayIndex === pathSegment) {
+    if (Array.isArray(currentObject) && typeof pathSegment === "number") {
+      if (pathSegment === previousPathSegment) {
         return currentObject.length - 1
+      } else if (
+        typeof previousPathSegment === "undefined" ||
+        (typeof previousPathSegment === "number" &&
+          pathSegment > previousPathSegment)
+      ) {
+        return currentObject.length
       }
-      return currentObject.length
     }
-    return 0
+    throw new Error("Invalid path segment")
   }
 
   /**
@@ -80,6 +79,7 @@ class SequenceToObject {
       // if path is inconsistent with data, it should throw an exception
       const currentPathSegment = this._calculateRealIndex(
         path[i],
+        this.previousPath[i],
         currentObject,
       )
       const nextPathSegment = path[i + 1]
@@ -94,10 +94,12 @@ class SequenceToObject {
     // @ts-ignore
     const currentPathSegment = this._calculateRealIndex(
       path[path.length - 1],
+      this.previousPath[path.length - 1],
       currentObject,
     )
     // @ts-ignore
     currentObject[currentPathSegment] = value
+    this.previousPath = path
   }
 }
 export default SequenceToObject
