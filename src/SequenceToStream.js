@@ -126,11 +126,11 @@ class SequenceToStream {
       } else if (pathSegment instanceof CachedString) {
         if (index !== commonPathIndex) {
           this._output(OPEN_BRACES)
-          this._output(valueToBuffer(
-            pathSegment,
-          ))
-          this._output(COLON)
         }
+        this._output(valueToBuffer(
+          pathSegment,
+        ))
+        this._output(COLON)
       }
     }
     const v = valueToBuffer(value)

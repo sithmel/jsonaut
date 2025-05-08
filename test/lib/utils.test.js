@@ -13,8 +13,6 @@ import {
   stringifyAndEncode,
   areBuffersEqual,
   areSegmentsEqual,
-  OPEN_BRACES,
-  OPEN_BRACKET,
 } from "../../src/lib/utils.js"
 
 import { Path } from "../../src/lib/path.js"
@@ -27,8 +25,22 @@ import { CachedString, CachedNumber, False, EmptyArray, EmptyObj, Null } from ".
  */
 function toPath(array) {
   const encoder = new TextEncoder()
-  const arrayEncoded = array.map((v) => typeof v === 'number' ? v :  new CachedString(encoder.encode(v)))
+  const arrayEncoded = array.map((v) => typeof v === 'number' ? v :  new CachedString(stringifyAndEncode(v)))
   return new Path(arrayEncoded)
+}
+
+/**
+ * 
+ * @param {Iterable<[number, number|CachedString]>} iterable 
+ * @returns {Array<[number, number|string]>}
+ */
+function segmentIterableToArray(iterable) {
+  return Array.from(iterable).map(([i, v]) => {
+    if (v instanceof CachedString) {
+      return [i, v.decoded]
+    }
+    return [i, v]
+  })
 }
 
 describe("isArrayOrObject", () => {
@@ -81,47 +93,47 @@ describe("getCommonPathIndex", () => {
     ))
 })
 describe("valueToBuffer", () => {
-  it("works with obj", () => assert.deepStrictEqual(valueToBuffer(new EmptyObj()), OPEN_BRACES))
-  it("works with array", () => assert.deepStrictEqual(valueToBuffer(new EmptyArray()), OPEN_BRACKET))
+  it("works with obj", () => assert.deepStrictEqual(valueToBuffer(new EmptyObj()), stringifyAndEncode({})))
+  it("works with array", () => assert.deepStrictEqual(valueToBuffer(new EmptyArray()), stringifyAndEncode([])))
   it("works with null", () => assert.deepStrictEqual(valueToBuffer(new Null()), stringifyAndEncode(null)))
   it("works with string", () => assert.deepStrictEqual(valueToBuffer(new CachedString(stringifyAndEncode("hello"))), stringifyAndEncode("hello")))
   it("works with boolean", () => assert.deepStrictEqual(valueToBuffer(new False()), stringifyAndEncode(false)))
   it("works with number", () => assert.deepStrictEqual(valueToBuffer(new CachedNumber(stringifyAndEncode(1.24))), stringifyAndEncode(1.24)))
 })
-describe.skip("fromEndToIndex", () => {
+describe("fromEndToIndex", () => {
   it("index 0", () =>
-    assert.deepEqual(Array.from(fromEndToIndex(toPath(["a", "b", "c"]), 0)), [
+    assert.deepEqual(segmentIterableToArray(fromEndToIndex(toPath(["a", "b", "c"]), 0)), [
       [2, "c"],
       [1, "b"],
       [0, "a"],
     ]))
   it("index 1", () =>
-    assert.deepEqual(Array.from(fromEndToIndex(toPath(["a", "b", "c"]), 1)), [
+    assert.deepEqual(segmentIterableToArray(fromEndToIndex(toPath(["a", "b", "c"]), 1)), [
       [2, "c"],
       [1, "b"],
     ]))
   it("index 2", () =>
-    assert.deepEqual(Array.from(fromEndToIndex(toPath(["a", "b", "c"]), 2)), [
+    assert.deepEqual(segmentIterableToArray(fromEndToIndex(toPath(["a", "b", "c"]), 2)), [
       [2, "c"],
     ]))
   it("index 3", () =>
-    assert.deepEqual(Array.from(fromEndToIndex(toPath(["a", "b", "c"]), 3)), []))
+    assert.deepEqual(segmentIterableToArray(fromEndToIndex(toPath(["a", "b", "c"]), 3)), []))
 })
 
-describe.skip("fromIndexToEnd", () => {
+describe("fromIndexToEnd", () => {
   it("index 0", () =>
-    assert.deepEqual(Array.from(fromIndexToEnd(toPath(["a", "b", "c"]), 0)), [
+    assert.deepEqual(segmentIterableToArray(fromIndexToEnd(toPath(["a", "b", "c"]), 0)), [
       [0, "a"],
       [1, "b"],
       [2, "c"],
     ]))
   it("index 1", () =>
-    assert.deepEqual(Array.from(fromIndexToEnd(toPath(["a", "b", "c"]), 1)), [
+    assert.deepEqual(segmentIterableToArray(fromIndexToEnd(toPath(["a", "b", "c"]), 1)), [
       [1, "b"],
       [2, "c"],
     ]))
   it("index 3", () =>
-    assert.deepEqual(Array.from(fromIndexToEnd(toPath(["a", "b", "c"]), 3)), []))
+    assert.deepEqual(segmentIterableToArray(fromIndexToEnd(toPath(["a", "b", "c"]), 3)), []))
 })
 
 describe("isPreviousPathInNewPath", () => {

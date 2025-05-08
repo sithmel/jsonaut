@@ -2,7 +2,7 @@
 import assert from "assert"
 import { describe, it, beforeEach } from "node:test"
 
-import { JSONaut } from "../src/index.js"
+import { streamToIterable } from "../src/index.js"
 import { Path } from "../src/lib/path.js"
 import { Value } from "../src/lib/value.js"
 
@@ -22,7 +22,7 @@ function decodePathAndValue([path, value, start, end]) {
 async function textToJSONProcessor(textArray, includes) {
   const encoder = new TextEncoder()
   const streamLike = textArray.map((text) => encoder.encode(text))
-  const array = await JSONaut(streamLike).includes(includes).toArray()
+  const array = await streamToIterable(streamLike).includes(includes).toArray()
   return array.map(decodePathAndValue)
 }
 

@@ -1,14 +1,36 @@
-export default class SequenceProcessor {
+/**
+ * @extends {GenericBatchIterable<[Path, Value, number, number] | [Path, Value]>}
+ */
+export default class SequenceProcessor extends GenericBatchIterable<[Path, Value] | [Path, Value, number, number]> {
+    constructor(_iterable?: AsyncIterable<Iterable<[Path, Value] | [Path, Value, number, number]>> | GenericBatchIterable<[Path, Value] | [Path, Value, number, number]> | Iterable<Iterable<[Path, Value] | [Path, Value, number, number]>> | undefined);
     /**
-     * @param {AsyncIterable<Iterable<[Path, Value, number, number]>>} iterable
+     * It filters the sequence based on the given expression
+     * @param {string} [expression]
+     * @returns {this}
      */
-    constructor(iterable: AsyncIterable<Iterable<[Path, Value, number, number]>>);
+    includes(expression?: string): this;
     /**
-     * @param {string} expression
-     * @returns {AsyncIterable<Iterable<[Path, Value, number, number]>>}
+     * Build an object back from the sequence
+     * @param {Object} options
+     * @param {boolean} [options.compactArrays=false] - if true ignore array index and generates arrays without gaps
+     * @returns {Promise<any>}
      */
-    includes(expression: string): AsyncIterable<Iterable<[Path, Value, number, number]>>;
+    toObject(): Promise<any>;
+    /**
+     * Build an stream back from the sequence
+     * @param {(arg0: Uint8Array<ArrayBufferLike>) => Promise<void>} onData
+     * @returns {Promise<void>}
+     */
+    toStream(onData: (arg0: Uint8Array<ArrayBufferLike>) => Promise<void>): Promise<void>;
+    /**
+     * Returns a general purpose batchiterable which is less strict in typing
+     * but lacks methods that requires the correct types to be enforced
+     * @returns {BatchIterable}
+     */
+    toBatchIterable(): BatchIterable;
 }
 import { Path } from "../lib/path.js";
 import { Value } from "../lib/value.js";
+import { GenericBatchIterable } from 'batch-iterable';
+import { BatchIterable } from 'batch-iterable';
 //# sourceMappingURL=index.d.ts.map

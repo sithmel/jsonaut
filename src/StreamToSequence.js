@@ -45,6 +45,8 @@ class StreamToSequence {
     this.stateStack = this._initStateStack(startingPath)
     this.currentPath = this._initCurrentPath(startingPath) // a combination of buffers (object keys) and numbers (array index)
     this.stringBuffer = new Uint8Array() // this stores strings temporarily (keys and values)
+
+    this.emptyObjectOrArrayStart = 0 // this is used to store the start of an empty object or array
   }
 
   /**
@@ -145,25 +147,21 @@ class StreamToSequence {
             ]
             this.state = this._popState()
           } else if (token === TOKEN.OPEN_BRACES) {
-            yield [
-              this.currentPath,
-              emptyObjValue,
-              startToken + this.tokenizer.offsetIndexFromBeginning,
-              endToken + this.tokenizer.offsetIndexFromBeginning,
-            ]
+            this.emptyObjectOrArrayStart = startToken + this.tokenizer.offsetIndexFromBeginning
             this.state = STATE.OPEN_OBJECT
           } else if (token === TOKEN.OPEN_BRACKET) {
-            yield [
-              this.currentPath,
-              emptyArrayValue,
-              startToken + this.tokenizer.offsetIndexFromBeginning,
-              endToken + this.tokenizer.offsetIndexFromBeginning,
-            ]
+            this.emptyObjectOrArrayStart = startToken + this.tokenizer.offsetIndexFromBeginning
             this.currentPath = this.currentPath.push(0)
             this.state = STATE.VALUE
             this._pushState(STATE.CLOSE_ARRAY)
-          } else if (token === TOKEN.CLOSED_BRACKET) {
+          } else if (token === TOKEN.CLOSED_BRACKET) { // empty array
             this.currentPath = this.currentPath.pop()
+            yield [
+              this.currentPath,
+              emptyArrayValue,
+              this.emptyObjectOrArrayStart,
+              endToken + this.tokenizer.offsetIndexFromBeginning,
+            ]
             this.state = this._popState()
             this.state = this._popState()
           } else if (token === TOKEN.TRUE) {
@@ -231,6 +229,13 @@ class StreamToSequence {
 
         case STATE.OPEN_OBJECT: // after the "{" in an object
           if (token === TOKEN.CLOSED_BRACES) {
+            yield [
+              this.currentPath,
+              emptyObjValue,
+              this.emptyObjectOrArrayStart,
+              endToken + this.tokenizer.offsetIndexFromBeginning,
+            ]
+
             this.state = this._popState()
             break
           }

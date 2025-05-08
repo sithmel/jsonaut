@@ -1,3 +1,9 @@
+/**
+ *
+ * @param {any} value
+ * @returns {Value}
+ */
+export function getValueObjectFromJSONValue(value: any): Value;
 export class Value {
     /** @return {any} */
     get decoded(): any;

@@ -1,11 +1,11 @@
-import { JSONaut } from "../src/index.js"
+import { streamToIterable } from "../src/index.js"
 import fs from "fs"
 import path from "path"
 import perform from "./utils/index.js"
 
 async function filterFile(JSONPath, lineNumber) {
   const readStream = fs.createReadStream(JSONPath)
-  const obj = await JSONaut(readStream, { maxDepth: 1 })
+  const obj = await streamToIterable(readStream, { maxDepth: 1 })
     .includes(`${lineNumber}`)
     .toObject({ compactArrays: true })
   readStream.destroy()

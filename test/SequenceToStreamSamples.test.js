@@ -4,7 +4,7 @@ import { describe, it, beforeEach } from "node:test"
 import fs from "fs"
 import path from "path"
 
-import {JSONaut} from "../src/index.js"
+import {streamToIterable} from "../src/index.js"
 
 /**
  * 
@@ -34,7 +34,7 @@ describe("SequenceToStream sample files", () => {
       let str = ""
       const decoder = new TextDecoder()
 
-      await JSONaut(readStream).toStream(async (data) => {
+      await streamToIterable(readStream).toStream(async (data) => {
         str += decoder.decode(data)
       })
 

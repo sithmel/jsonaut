@@ -1,13 +1,16 @@
 //@ts-check
 import { Path } from "./lib/path.js"
 import { Value, CachedString } from "./lib/value.js"
-
+import {getCommonPathIndex, fromIndexToEnd} from "./lib/utils.js"
 /**
  * @private
- * @param {CachedString|number} pathSegment
+ * @param {CachedString|number|null} pathSegment
  * @returns {{}|[]}
  */
 function initObject(pathSegment) {
+  if (pathSegment == null) {
+    throw new Error("Path cannot be empty")
+  }
   return typeof pathSegment === "number" && pathSegment >= 0 ? [] : {}
 }
 
@@ -20,34 +23,29 @@ class SequenceToObject {
    */
   constructor() {
     this.object = undefined
-    this.lastArray = undefined
-    this.lastArrayIndex = undefined
+    this.previousPath = new Path()
   }
 
   /**
    * @private
    * @param {CachedString|number|null} pathSegment
-   * @param {Value} currentObject
-   * @returns {CachedString|number}
+   * @param {boolean} isPreviousCommonPathSegment
+   * @param {any} currentObject
+   * @returns {string|number}
    */
-  _calculateRealIndex(pathSegment, currentObject) {
+  _calculateRealIndex(pathSegment, isPreviousCommonPathSegment, currentObject) {
     if (pathSegment instanceof CachedString) {
       return pathSegment.decoded
     }
-    const value = currentObject.decoded
-    if (Array.isArray(value)) {
-      // copy values locally
-      const lastArray = this.lastArray
-      const lastArrayIndex = this.lastArrayIndex
-      // update with new values
-      this.lastArray = value
-      this.lastArrayIndex = pathSegment
-      if (value === lastArray && lastArrayIndex === pathSegment) {
-        return value.length - 1
+
+    if (Array.isArray(currentObject) && pathSegment != null) {
+      if (isPreviousCommonPathSegment) {
+        return currentObject.length - 1 // same element
+      } else {
+        return currentObject.length // new element
       }
-      return value.length
     }
-    return 0
+    throw new Error("Invalid path segment")
   }
 
   /**
@@ -71,36 +69,32 @@ class SequenceToObject {
       return this
     }
     if (this.object === undefined) {
-      const firstPathSegment = path.get(0)
-      if (firstPathSegment == undefined) {
-        throw new Error("Path cannot be empty empty")
-      }
-      this.object = initObject(firstPathSegment)
+      this.object = initObject(path.get(0))
     }
+
+    const commonPathIndex = getCommonPathIndex(this.previousPath, path)
     let currentObject = this.object
+
     for (let i = 0; i < path.length - 1; i++) {
-      // ignoring type errors here:
-      // if path is inconsistent with data, it should throw an exception
+
       const currentPathSegment = this._calculateRealIndex(
         path.get(i),
+        i < commonPathIndex,
         currentObject,
       )
       const nextPathSegment = path.get(i + 1)
-      // @ts-ignore
       if (currentObject[currentPathSegment] === undefined) {
-        // @ts-ignore
         currentObject[currentPathSegment] = initObject(nextPathSegment)
       }
-      // @ts-ignore
       currentObject = currentObject[currentPathSegment]
     }
-    // @ts-ignore
     const currentPathSegment = this._calculateRealIndex(
       path.get(path.length - 1),
+      path.length - 1 < commonPathIndex,
       currentObject,
     )
-    // @ts-ignore
     currentObject[currentPathSegment] = value.decoded
+    this.previousPath = path
     return this
   }
 }

@@ -112,13 +112,12 @@ describe("StreamToSequence", () => {
   describe("object", () => {
     it("works with an empty object", () => {
       const seq = parserIter("{}")
-      assert.deepEqual(seq, [[[], {}, 0, 1]])
+      assert.deepEqual(seq, [[[], {}, 0, 2]])
       assert.equal(parser.isFinished(), true)
     })
     it("works with a minimal object", () => {
       const seq = parserIter(`{"test":1}`)
       assert.deepEqual(seq, [
-        [[], {}, 0, 1],
         [["test"], 1, 8, 9],
       ])
       assert.equal(parser.isFinished(), true)
@@ -126,7 +125,6 @@ describe("StreamToSequence", () => {
     it("works with an object with multiple prop", () => {
       const seq = parserIter(`{"test":1, "test1":"xyz"}`)
       assert.deepEqual(seq, [
-        [[], {}, 0, 1],
         [["test"], 1, 8, 9],
         [["test1"], "xyz", 19, 24],
       ])
@@ -136,13 +134,12 @@ describe("StreamToSequence", () => {
   describe("array", () => {
     it("works with an empty array", () => {
       const seq = parserIter("[]")
-      assert.deepEqual(seq, [[[], [], 0, 1]])
+      assert.deepEqual(seq, [[[], [], 0, 2]])
       assert.equal(parser.isFinished(), true)
     })
     it("works with a minimal array", () => {
       const seq = parserIter(`[1]`)
       assert.deepEqual(seq, [
-        [[], [], 0, 1],
         [[0], 1, 1, 2],
       ])
       assert.equal(parser.isFinished(), true)
@@ -150,7 +147,6 @@ describe("StreamToSequence", () => {
     it("works with an array with multiple items", () => {
       const seq = parserIter(`[1,"xyz"]`)
       assert.deepEqual(seq, [
-        [[], [], 0, 1],
         [[0], 1, 1, 2],
         [[1], "xyz", 3, 8],
       ])
@@ -161,8 +157,6 @@ describe("StreamToSequence", () => {
     it("works with object nested into object (1)", () => {
       const seq = parserIter('{"test1":{"test2":1}}')
       assert.deepEqual(seq, [
-        [[], {}, 0, 1],
-        [["test1"], {}, 9, 10],
         [["test1", "test2"], 1, 18, 19],
       ])
       assert.equal(parser.isFinished(), true)
@@ -171,8 +165,6 @@ describe("StreamToSequence", () => {
     it("works with object nested into object (2)", () => {
       const seq = parserIter('{"test1":{"test2":1}, "test3":2}')
       assert.deepEqual(seq, [
-        [[], {}, 0, 1],
-        [["test1"], {}, 9, 10],
         [["test1", "test2"], 1, 18, 19],
         [["test3"], 2, 30, 31],
       ])
@@ -182,10 +174,7 @@ describe("StreamToSequence", () => {
     it("works with object nested into arrays (1)", () => {
       const seq = parserIter('[{"test1":1}, {"test2":2}]')
       assert.deepEqual(seq, [
-        [[], [], 0, 1],
-        [[0], {}, 1, 2],
         [[0, "test1"], 1, 10, 11],
-        [[1], {}, 14, 15],
         [[1, "test2"], 2, 23, 24],
       ])
       assert.equal(parser.isFinished(), true)
@@ -194,12 +183,8 @@ describe("StreamToSequence", () => {
     it("works with object nested into arrays (2)", () => {
       const seq = parserIter('[{"test1":[1, "xyz"]}, {"test2":2}]')
       assert.deepEqual(seq, [
-        [[], [], 0, 1],
-        [[0], {}, 1, 2],
-        [[0, "test1"], [], 10, 11],
         [[0, "test1", 0], 1, 11, 12],
         [[0, "test1", 1], "xyz", 14, 19],
-        [[1], {}, 23, 24],
         [[1, "test2"], 2, 32, 33],
       ])
       assert.equal(parser.isFinished(), true)
@@ -208,12 +193,9 @@ describe("StreamToSequence", () => {
     it("works with object nested into arrays (3)", () => {
       const seq = parserIter("[[1, 2, 3], [4, 5, 6]]")
       assert.deepEqual(seq, [
-        [[], [], 0, 1],
-        [[0], [], 1, 2],
         [[0, 0], 1, 2, 3],
         [[0, 1], 2, 5, 6],
         [[0, 2], 3, 8, 9],
-        [[1], [], 12, 13],
         [[1, 0], 4, 13, 14],
         [[1, 1], 5, 16, 17],
         [[1, 2], 6, 19, 20],
@@ -230,7 +212,6 @@ describe("StreamToSequence", () => {
     it("works with object nested into object (1)", () => {
       const seq = parserIter('{"test1":{"test2":1}}')
       assert.deepEqual(seq, [
-        [[], {}, 0, 1],
         [["test1"], { test2: 1 }, 9, 20],
       ])
       assert.equal(parser.isFinished(), true)
@@ -239,7 +220,6 @@ describe("StreamToSequence", () => {
     it("works with object nested into object (2)", () => {
       const seq = parserIter('{"test1":{"test2":1}, "test3":2}')
       assert.deepEqual(seq, [
-        [[], {}, 0, 1],
         [["test1"], { test2: 1 }, 9, 20],
         [["test3"], 2, 30, 31],
       ])
@@ -249,7 +229,6 @@ describe("StreamToSequence", () => {
     it("works with object nested into arrays (1)", () => {
       const seq = parserIter('[{"test1":1}, {"test2":2}]')
       assert.deepEqual(seq, [
-        [[], [], 0, 1],
         [[0], { test1: 1 }, 1, 12],
         [[1], { test2: 2 }, 14, 25],
       ])
@@ -259,7 +238,6 @@ describe("StreamToSequence", () => {
     it("works with object nested into arrays (2)", () => {
       const seq = parserIter('[{"test1":[1, "xyz"]}, {"test2":2}]')
       assert.deepEqual(seq, [
-        [[], [], 0, 1],
         [[0], { test1: [1, "xyz"] }, 1, 21],
         [[1], { test2: 2 }, 23, 34],
       ])
@@ -269,7 +247,6 @@ describe("StreamToSequence", () => {
     it("works with object nested into arrays (3)", () => {
       const seq = parserIter("[[1, 2, 3], [4, 5, 6]]")
       assert.deepEqual(seq, [
-        [[], [], 0, 1],
         [[0], [1, 2, 3], 1, 10],
         [[1], [4, 5, 6], 12, 21],
       ])
@@ -290,7 +267,6 @@ describe("StreamToSequence", () => {
         seq.push(decodePathAndValue(kv))
       }
       assert.deepEqual(seq, [
-        [["test1"], {}, 0, 1],
         [["test1", "test2"], 1, 9, 10],
       ])
       assert.equal(parser.isFinished(), true)
@@ -307,7 +283,6 @@ describe("StreamToSequence", () => {
       }
 
       assert.deepEqual(seq, [
-        [["test1"], {}, 0, 1],
         [["test1", "test2"], 1, 9, 10],
       ])
       assert.equal(parser.isFinished(), true)

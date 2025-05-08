@@ -1,4 +1,4 @@
-import { JSONaut } from "../src/index.js"
+import { streamToIterable } from "../src/index.js"
 import SequenceToObject from "../src/SequenceToObject.js"
 import fs from "fs"
 import path from "path"
@@ -6,7 +6,7 @@ import perform from "./utils/index.js"
 
 async function createIndex(JSONPath, indexPath) {
   const readStream = fs.createReadStream(JSONPath)
-  const indexObj = await JSONaut(readStream, { maxDepth: 1 })
+  const indexObj = await streamToIterable(readStream, { maxDepth: 1 })
     .reduce((builder, [path, _value, start, end]) => {
       if (path.length === 1) {
         builder.add(path.decoded, [start, end])
@@ -19,7 +19,7 @@ async function createIndex(JSONPath, indexPath) {
 
 async function filterFile(JSONPath, indexPath, lineNumber) {
   const indexReadStream = fs.createReadStream(indexPath)
-  const obj = await JSONaut(indexReadStream, { maxDepth: 1 })
+  const obj = await streamToIterable(indexReadStream, { maxDepth: 1 })
     .includes(`${lineNumber}`)
     .toObject({ compactArrays: true })
 

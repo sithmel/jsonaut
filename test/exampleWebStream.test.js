@@ -2,7 +2,7 @@
 import assert from "assert"
 import { describe, it, before } from "node:test"
 
-import {JSONaut} from "../src/index.js"
+import {streamToIterable} from "../src/index.js"
 
 
 /**
@@ -40,7 +40,7 @@ function getTestWritableStream(output) {
  */
 async function filterJSONStream(readable, writable, includes, controller) {
   const writer = writable.getWriter()
-  await JSONaut(readable)
+  await streamToIterable(readable)
     .includes(includes)
     .toStream(async (data) => {
       await writer.write(data)

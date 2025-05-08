@@ -1,4 +1,10 @@
 /**
+ *
+ * @param {import("../baseTypes").JSONPathType} path
+ * @returns {Path}
+ */
+export function JSONPathToPath(path: import("../baseTypes").JSONPathType): Path;
+/**
  * @private
  */
 export class Path {

@@ -30,7 +30,7 @@ describe("StreamToSequence sample files", () => {
 
       for await (const iterable of parser.iter(readStream)) {
         for (const [k, v] of iterable) {
-          builder.add(k.decoded, v.decoded)
+          builder.add(k, v)
         }
       }
       assert.equal(parser.isFinished(), true)

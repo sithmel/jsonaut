@@ -1,6 +1,12 @@
 //@ts-check
 import { decodeAndParse, stringifyAndEncode, isArrayOrObject } from "./utils.js"
 
+const FALSE_BUFFER = stringifyAndEncode(false)
+const NULL_BUFFER = stringifyAndEncode(null)
+const TRUE_BUFFER = stringifyAndEncode(true)
+const EMPTY_OBJECT_BUFFER = stringifyAndEncode({})
+const EMPTY_ARRAY_BUFFER = stringifyAndEncode([])
+
 export class Value {
   /** @return {any} */
   get decoded() {
@@ -19,7 +25,7 @@ export class True extends Value {
   }
   /** @return {Uint8Array} */
   get encoded() {
-    return stringifyAndEncode(true)
+    return TRUE_BUFFER
   }
 }
 
@@ -30,7 +36,7 @@ export class False extends Value {
   }
   /** @return {Uint8Array} */
   get encoded() {
-    return stringifyAndEncode(false)
+    return FALSE_BUFFER
   }  
 }
 
@@ -41,7 +47,7 @@ export class Null extends Value {
   }
   /** @return {Uint8Array} */
   get encoded() {
-    return stringifyAndEncode(null)
+    return NULL_BUFFER
   }  
 }
 
@@ -52,7 +58,7 @@ export class EmptyObj extends Value {
   }
   /** @return {Uint8Array} */
   get encoded() {
-    return stringifyAndEncode({})
+    return EMPTY_OBJECT_BUFFER
   }  
 }
 
@@ -63,7 +69,7 @@ export class EmptyArray extends Value {
   }
   /** @return {Uint8Array} */
   get encoded() {
-    return stringifyAndEncode([])
+    return EMPTY_ARRAY_BUFFER
   }  
 }
 
@@ -116,6 +122,11 @@ export function getValueObjectFromJSONValue(value) {
     return falseValue
   }
   if (isArrayOrObject(value)) {
+    if (Array.isArray(value) && value.length === 0) {
+      return emptyArrayValue
+    } else if (Object.keys(value).length === 0) {
+      return emptyObjValue
+    }
     return new CachedSubObject(stringifyAndEncode(value))
   }
   if (typeof value === "string") {

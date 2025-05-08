@@ -27,10 +27,14 @@ class ObjectToSequence {
     if (isArrayOrObject(obj) && currentPath.length < this.maxDepth) {
       let pathSegmentsAndValues
       if (Array.isArray(obj)) {
-        yield [JSONPathToPath(currentPath), emptyArrayValue]
+        if (obj.length === 0) {
+          yield [JSONPathToPath(currentPath), emptyArrayValue]
+        }
         pathSegmentsAndValues = obj.map((v, i) => [i, v])
       } else {
-        yield [JSONPathToPath(currentPath), emptyObjValue]
+        if (Object.keys(obj).length === 0) {
+          yield [JSONPathToPath(currentPath), emptyObjValue]
+        }
         pathSegmentsAndValues = Object.entries(obj)
       }
       for (const [pathSegment, value] of pathSegmentsAndValues) {

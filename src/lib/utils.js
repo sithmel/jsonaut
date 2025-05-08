@@ -3,7 +3,7 @@
  * @private
  */
 import { Path } from "./path.js"
-import { CachedString, Value, EmptyArray, EmptyObj } from "./value.js"
+import { CachedString, Value } from "./value.js"
 
 const encoder = new TextEncoder()
 
@@ -95,7 +95,7 @@ export function isArrayOrObject(value) {
  * @returns {number}
  */
 export function getCommonPathIndex(oldPath, newPath) {
-  const length = Math.max(oldPath.length, newPath.length)
+  const length = Math.min(oldPath.length, newPath.length)
   for (let i = 0; i < length; i++) {
     if (!areSegmentsEqual(oldPath.get(i), newPath.get(i))) {
       return i
@@ -129,12 +129,6 @@ export function isPreviousPathInNewPath(oldPath, newPath) {
  * @returns {Uint8Array}
  */
 export function valueToBuffer(value) {
-  if (value instanceof EmptyObj) {
-    return OPEN_BRACES
-  }
-  if (value instanceof EmptyArray) {
-    return OPEN_BRACKET
-  }
   return value.encoded
 }
 
@@ -143,24 +137,32 @@ export function valueToBuffer(value) {
  * @private
  * @param {Path} path
  * @param {number} index
- * @returns {Iterable<[number, number|CachedString|null]>}
+ * @returns {Iterable<[number, number|CachedString]>}
  */
 export function* fromEndToIndex(path, index) {
   for (let i = path.length - 1; i >= index; i--) {
-    yield [i, path.get(i)]
+    const segment = path.get(i)
+    if (segment == null) {
+      throw new Error("Path segment cannot be null")
+    }
+    yield [i, segment]
   }
 }
 
 /**
  * Yields item arrays from index to end, yield true on first
  * @private
- * @param {Path} array
+ * @param {Path} path
  * @param {number} index
- * @returns {Iterable<[number, number|CachedString|null]>}
+ * @returns {Iterable<[number, number|CachedString]>}
  */
-export function* fromIndexToEnd(array, index) {
-  for (let i = index; i < array.length; i++) {
-    yield [i, array.get(i)]
+export function* fromIndexToEnd(path, index) {
+  for (let i = index; i < path.length; i++) {
+    const segment = path.get(i)
+    if (segment == null) {
+      throw new Error("Path segment cannot be null")
+    }
+    yield [i, segment]
   }
 }
 
@@ -190,5 +192,6 @@ export function decodeAndParse(buffer) {
  * @returns {Uint8Array}
  */
 export function stringifyAndEncode(value) {
+  const encoder = new TextEncoder()
   return encoder.encode(JSON.stringify(value))
 }

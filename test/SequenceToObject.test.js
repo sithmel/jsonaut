@@ -5,7 +5,7 @@ import {JSONPathToPath} from "../src/lib/path.js"
 import {getValueObjectFromJSONValue} from "../src/lib/value.js"
 import SequenceToObject from "../src/SequenceToObject.js"
 
-describe.only("SequenceToObject", () => {
+describe("SequenceToObject", () => {
   it("works with scalars", () => {
     const builder = new SequenceToObject()
     builder.add(JSONPathToPath([]), getValueObjectFromJSONValue(true))
@@ -41,7 +41,7 @@ describe.only("SequenceToObject", () => {
     })
   })
 
-  it.only("compacts arrays (3)", () => {
+  it("compacts arrays (3)", () => {
     const builder = new SequenceToObject()
     builder.add(JSONPathToPath(["collection", 1]), getValueObjectFromJSONValue({}))
     builder.add(JSONPathToPath(["collection", 3, "brand"]), getValueObjectFromJSONValue("Rolls Royce"))
