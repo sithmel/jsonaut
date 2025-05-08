@@ -38,6 +38,6 @@
     "semi": false
   },
   "dependencies": {
-    "batch-iterable": "^0.0.6"
+    "batch-iterable": "^0.0.7"
   }
 }

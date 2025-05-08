@@ -1,11 +1,61 @@
-![JSON key value logo](https://raw.githubusercontent.com/sithmel/jsonaut/main/logo/logo.png)
+![JSONaut logo](https://raw.githubusercontent.com/sithmel/jsonaut/main/logo/logo.png)
 
 # JSONaut
 
-JSONaut is a toolkit to work with JSON and JS object as they are converted to a sequence to path value pairs (using iterables).
-It enables using filter, map reduce techniques in a way that is readable, simpler and efficient.
+JSONaut allows to work with JSON as streams, without the need to load them in memory.
+It converts them into a sequence of path/value pairs (using iterables) and offers a lot of features to manipulate that sequence and returns it as object or as a new stream.
 
-It is minimal (no dependencies) but work well with other libraries. It is designed for both server and client.
+It is minimal (only 1 small dependency) but work well with other libraries. It is designed for both server and client.
+
+## Examples
+In this example I filter a stream to build an object that contains only the data required. See the [benchmarks](#benchmarks).
+```js
+import fs from "fs"
+import { streamToIterable } from "jsonaut"
+
+const readStream = fs.createReadStream('invoices.json')
+
+const obj = streamToIterable(readStream)
+  .includes(`'invoices'( 0..2( 'itemsSold' 'unitPrice'))`)
+  .filter(() => )
+  .toObject()
+  .then((obj) => {
+    readStream.destroy()
+    // obj contains the first 2 invoices
+    // including only the itemsSold and unitPrice
+  })
+```
+
+or if you prefer to write the stream directly:
+
+```js
+import fs from "fs"
+import { streamToIterable } from "jsonaut"
+
+const readStream = fs.createReadStream(inputFilePath)
+const writeStream = fs.createWriteStream(outputFilePath);
+
+streamToIterable(readStream)
+  .includes(`'invoices'( * ( 'itemsSold' 'unitPrice'))`)
+  .toStream((data) => writeStream.write(data))
+  .then(() => {
+    writeStream.end()
+    readStream.destroy()
+  })
+```
+
+
+### Rendering partial state
+
+Fetching a big JSON on the browser and render the data in the UI while being downloaded (no need to wait for the entire file to be downloaded).
+
+
+### Easy Data manipulation
+
+Transforming a tree data structure (like a Javascript object) is not super convenient. With JSONaut you can simply iterate over the sequence and use familiar filter/map/reduce.
+
+
+
 
 ## The idea
 
@@ -16,9 +66,7 @@ An example of a sequence is:
 
 | Path, Value                | Resulting object                                  |
 | -------------------------- | ------------------------------------------------- |
-| [], {}                     | {}                                                |
 | ["name"], "JSONaut"        | {"name": "JSONaut"}                               |
-| ["keywords"], []           | {"name": "JSONaut", keywords: []}                 |
 | ["keywords", 0], "json"    | {"name": "JSONaut", keywords: ["json"]}           |
 | ["keywords", 1], "stream"  | {"name": "JSONaut", keywords: ["json", "stream"]} |
 
@@ -27,19 +75,6 @@ An example of a sequence is:
 Streaming out JSON requires the "path, value" pairs to be emitted in **depth first** order of paths otherwise the resulting JSON will be malformed. This is the normal order in which data are stored in JSON.
 Alternatively, it also works if the paths are sorted comparing object keys in lexicographic order and array indexes from the smallest to the biggest. In this case, the structure will be respected, but not necessarily the order the keys presents in the original JSON (ES2015 standard introduced the concept of key ordering, but it is not respected here).
 
-## Example use cases
-
-### Rendering partial state
-
-Fetching a big JSON on the browser and render the data in the UI while being downloaded (no need to wait for the entire file to be downloaded).
-
-### Filter data
-
-Using JSONaut in the backend to fetch a JSON from some source (db, file system, network) and filter the data needed. The `include` expression can be passed as query parameter or in the body, so that a browser can use a graphql like syntax to avoid overfetching. See the [benchmarks](#benchmarks).
-
-### Easy Data manipulation
-
-Transforming a tree data structure (like a Javascript object) is not super convenient. With JSONaut you can simply iterate over the sequence and use familiar filter/map/reduce.
 
 # API
 

@@ -31,12 +31,14 @@ describe("SequenceToStream sample files", () => {
         path.join("test", "samples", filename),
       )
 
-      let str = ""
       const decoder = new TextDecoder()
 
-      await streamToIterable(readStream).toStream(async (data) => {
-        str += decoder.decode(data)
-      })
+
+      const str = await streamToIterable(readStream).toStream().reduce((acc, data) => {
+        acc += decoder.decode(data)
+        return acc
+      }
+      , "")
 
       const copy = JSON.parse(str)
 

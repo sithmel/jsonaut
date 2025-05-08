@@ -1,5 +1,6 @@
 //@ts-check
 import {
+  mergeBuffers,
   getCommonPathIndex,
   valueToBuffer,
   fromEndToIndex,
@@ -43,29 +44,21 @@ class SequenceToStream {
    * @param {Object} options
    * @param {(arg0: Uint8Array) => Promise<void>} options.onData - function called when a new sequence of bytes is returned
    */
-  constructor({ onData }) {
+  constructor() {
     this.currentPath = new Path()
-    this.onData = onData
     /** @type CONTEXT */
     this.context = CONTEXT.NULL
-    this.lastWritePromise = Promise.resolve()
   }
 
-  /**
-   * @private
-   * @param {Uint8Array} buffer
-   */
-  async _output(buffer) {
-    await this.lastWritePromise
-    this.lastWritePromise = this.onData(buffer)
-  }
   /**
    * add a new path value pair
    * @param {Path} path - an array of path segments
    * @param {Value} value - the value at the corresponding path
-   * @returns {void}
+   * @returns {Uint8Array}
    */
   add(path, value) {
+    /** @type {Array<Uint8Array>} */
+    const buffers = []
     const previousPath = this.currentPath
     this.currentPath = path
 
@@ -81,16 +74,16 @@ class SequenceToStream {
       path.length > 0
     ) {
       if (typeof path.get(0) === "number") {
-        this._output(OPEN_BRACKET)
+        buffers.push(OPEN_BRACKET)
       } else {
-        this._output(OPEN_BRACES)
+        buffers.push(OPEN_BRACES)
       }
     }
     if (!isPreviousPathInNewPath(previousPath, path)) {
       if (this.context === CONTEXT.OBJECT) {
-        this._output(CLOSE_BRACES)
+        buffers.push(CLOSE_BRACES)
       } else if (this.context === CONTEXT.ARRAY) {
-        this._output(CLOSE_BRACKET)
+        buffers.push(CLOSE_BRACKET)
       }
     }
     // close all opened path in reverse order
@@ -99,16 +92,16 @@ class SequenceToStream {
       commonPathIndex,
     )) {
       if (index === commonPathIndex) {
-        this._output(COMMA)
+        buffers.push(COMMA)
       } else {
-        this._output(pathSegmentTerminator(pathSegment))
+        buffers.push(pathSegmentTerminator(pathSegment))
       }
     }
     // open the new paths
     for (const [index, pathSegment] of fromIndexToEnd(path, commonPathIndex)) {
       if (typeof pathSegment === "number") {
         if (index !== commonPathIndex) {
-          this._output(OPEN_BRACKET)
+          buffers.push(OPEN_BRACKET)
         }
 
         const previousIndex =
@@ -125,34 +118,37 @@ class SequenceToStream {
         }
       } else if (pathSegment instanceof CachedString) {
         if (index !== commonPathIndex) {
-          this._output(OPEN_BRACES)
+          buffers.push(OPEN_BRACES)
         }
-        this._output(valueToBuffer(
+        buffers.push(valueToBuffer(
           pathSegment,
         ))
-        this._output(COLON)
+        buffers.push(COLON)
       }
     }
     const v = valueToBuffer(value)
     this.context = v instanceof EmptyObj ? CONTEXT.OBJECT : v instanceof EmptyArray ? CONTEXT.ARRAY : CONTEXT.NULL
-    this._output(v)
+    buffers.push(v)
+    return mergeBuffers(buffers)
   }
 
   /**
    * The input stream is completed
-   * @returns {Promise<void>}
+   * @returns {Uint8Array}
    */
-  async end() {
+  end() {
+    /** @type {Array<Uint8Array>} */
+    const buffers = []
     if (this.context === CONTEXT.OBJECT) {
-      this._output(CLOSE_BRACES)
+      buffers.push(CLOSE_BRACES)
     } else if (this.context === CONTEXT.ARRAY) {
-      this._output(CLOSE_BRACKET)
+      buffers.push(CLOSE_BRACKET)
     }
     // all opened path in reverse order
     for (const [_index, pathSegment] of fromEndToIndex(this.currentPath, 0)) {
-      this._output(pathSegmentTerminator(pathSegment))
+      buffers.push(pathSegmentTerminator(pathSegment))
     }
-    await this.lastWritePromise
+    return mergeBuffers(buffers)
   }
 }
 

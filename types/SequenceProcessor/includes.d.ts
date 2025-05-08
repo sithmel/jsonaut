@@ -1,9 +1,11 @@
 /**
- * @param {AsyncIterable<Iterable<[Path, Value, number, number]|[Path, Value]>>} asyncIterable
+ * Filters an async iterable based on the `includes` expression.
+ * @template {[Path, Value] | [Path, Value, number, number]} T
+ * @param {AsyncIterable<Iterable<T>>} asyncIterable
  * @param {string} includes
- * @returns {AsyncIterable<Iterable<[Path, Value, number, number]|[Path, Value]>>}
+ * @returns {AsyncIterable<Iterable<T>>}
  */
-export default function includes(asyncIterable: AsyncIterable<Iterable<[Path, Value, number, number] | [Path, Value]>>, includes: string): AsyncIterable<Iterable<[Path, Value, number, number] | [Path, Value]>>;
+export default function includes<T extends [Path, Value] | [Path, Value, number, number]>(asyncIterable: AsyncIterable<Iterable<T>>, includes: string): AsyncIterable<Iterable<T>>;
 import { Path } from "../lib/path.js";
 import { Value } from "../lib/value.js";
 //# sourceMappingURL=includes.d.ts.map

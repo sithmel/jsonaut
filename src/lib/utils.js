@@ -195,3 +195,24 @@ export function stringifyAndEncode(value) {
   const encoder = new TextEncoder()
   return encoder.encode(JSON.stringify(value))
 }
+
+/**
+ * @private
+ * @param {Array<Uint8Array>} buffers
+ * @returns {Uint8Array}
+ */
+export function mergeBuffers(buffers) {
+  const offsets = []
+  let totalSize = 0
+  for (const buffer of buffers) {
+    offsets.push(totalSize)
+    totalSize += buffer.length
+  }
+  const merged = new Uint8Array(totalSize);
+  let i = 0
+  for (const buffer of buffers) {
+    merged.set(buffer, offsets[i]);
+    i++
+  }
+  return merged
+}

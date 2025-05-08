@@ -11,30 +11,28 @@ async function testObj(obj) {
   let str = ""
   const decoder = new TextDecoder()
   const parser = new ObjectToSequence()
-  const builder = new SequenceToStream({
-    onData: async (data) => {
-      str += decoder.decode(data)
-    },
-  })
+  const builder = new SequenceToStream()
+
   for (const [path, value] of parser.iter(obj)) {
-    builder.add(path, value)
+    const data = builder.add(path, value)
+    str += decoder.decode(data)
   }
-  await builder.end()
+  const data = builder.end()
+  str += decoder.decode(data)
   assert.deepEqual(JSON.parse(str), obj, str)
 }
 
 async function testSequence(sequence, obj) {
   const decoder = new TextDecoder()
   let str = ""
-  const builder = new SequenceToStream({
-    onData: async (data) => {
-      str += decoder.decode(data)
-    },
-  })
+  const builder = new SequenceToStream()
+
   for (const [path, value] of sequence) {
-    builder.add(JSONPathToPath(path), getValueObjectFromJSONValue(value))
+    const data = builder.add(JSONPathToPath(path), getValueObjectFromJSONValue(value))
+    str += decoder.decode(data)
   }
-  await builder.end()
+  const data = builder.end()
+  str += decoder.decode(data)
   assert.deepEqual(JSON.parse(str), obj, str)
 }
 

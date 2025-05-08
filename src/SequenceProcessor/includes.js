@@ -3,18 +3,21 @@ import { Value } from "../lib/value.js"
 import parseIncludes from "../lib/pathMatcherParser.js"
 
 /**
- * @param {AsyncIterable<Iterable<[Path, Value, number, number]|[Path, Value]>>} asyncIterable
+ * Filters an async iterable based on the `includes` expression.
+ * @template {[Path, Value] | [Path, Value, number, number]} T
+ * @param {AsyncIterable<Iterable<T>>} asyncIterable
  * @param {string} includes
- * @returns {AsyncIterable<Iterable<[Path, Value, number, number]|[Path, Value]>>}
+ * @returns {AsyncIterable<Iterable<T>>}
  */
-export default async function * includes(asyncIterable, includes) {
+export default async function* includes(asyncIterable, includes) {
   const matcher = parseIncludes(includes)
 
-/**
- * @param {Iterable<[Path, Value, number, number]|[Path, Value]>} iterable
- * @returns {Iterable<[Path, Value, number, number]|[Path, Value]>}
- */
-function * iter(iterable) {
+  /**
+   * Filters a single iterable based on the matcher.
+   * @param {Iterable<T>} iterable
+   * @returns {Iterable<T>}
+   */
+  function* iter(iterable) {
     for (const i of iterable) {
       if (matcher.isExhausted()) break
       if (matcher.doesMatch(i[0])) {
