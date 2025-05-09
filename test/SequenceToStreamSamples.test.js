@@ -34,7 +34,7 @@ describe("SequenceToStream sample files", () => {
       const decoder = new TextDecoder()
 
 
-      const str = await streamToIterable(readStream).toStream().reduce((acc, data) => {
+      const str = await streamToIterable(readStream).toIterableBuffer().reduce((acc, data) => {
         acc += decoder.decode(data)
         return acc
       }

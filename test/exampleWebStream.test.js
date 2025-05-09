@@ -42,7 +42,7 @@ async function filterJSONStream(readable, writable, includes, controller) {
   const writer = writable.getWriter()
   await streamToIterable(readable)
     .includes(includes)
-    .toStream()
+    .toIterableBuffer()
     .forEach((data) => {
      writer.write(data)
   })

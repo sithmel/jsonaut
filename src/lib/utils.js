@@ -3,7 +3,7 @@
  * @private
  */
 import { Path } from "./path.js"
-import { CachedString, Value } from "./value.js"
+import { CachedString } from "./value.js"
 
 const encoder = new TextEncoder()
 
@@ -120,16 +120,6 @@ export function isPreviousPathInNewPath(oldPath, newPath) {
     }
   }
   return true
-}
-
-/**
- * Transform a value in JSON
- * @private
- * @param {Value} value
- * @returns {Uint8Array}
- */
-export function valueToBuffer(value) {
-  return value.encoded
 }
 
 /**

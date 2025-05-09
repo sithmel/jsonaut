@@ -8,7 +8,7 @@ import { Value } from "../lib/value.js"
  * @param {AsyncIterable<Iterable<[Path, Value]|[Path, Value, number, number]>>} asyncIterable
  * @returns {AsyncIterable<Iterable<Uint8Array>>}
  */
-export async function* toStream(asyncIterable) {
+export async function* toIterableBuffer(asyncIterable) {
   const builder = new SequenceToStream()
   /**
    *

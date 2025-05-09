@@ -5,7 +5,6 @@ import { describe, it } from "node:test"
 import {
   isArrayOrObject,
   getCommonPathIndex,
-  valueToBuffer,
   fromEndToIndex,
   fromIndexToEnd,
   isPreviousPathInNewPath,
@@ -91,14 +90,6 @@ describe("getCommonPathIndex", () => {
       getCommonPathIndex(toPath(["x", "a", "b"]), toPath(["x", "y", "z"])),
       1,
     ))
-})
-describe("valueToBuffer", () => {
-  it("works with obj", () => assert.deepStrictEqual(valueToBuffer(new EmptyObj()), stringifyAndEncode({})))
-  it("works with array", () => assert.deepStrictEqual(valueToBuffer(new EmptyArray()), stringifyAndEncode([])))
-  it("works with null", () => assert.deepStrictEqual(valueToBuffer(new Null()), stringifyAndEncode(null)))
-  it("works with string", () => assert.deepStrictEqual(valueToBuffer(new CachedString(stringifyAndEncode("hello"))), stringifyAndEncode("hello")))
-  it("works with boolean", () => assert.deepStrictEqual(valueToBuffer(new False()), stringifyAndEncode(false)))
-  it("works with number", () => assert.deepStrictEqual(valueToBuffer(new CachedNumber(stringifyAndEncode(1.24))), stringifyAndEncode(1.24)))
 })
 describe("fromEndToIndex", () => {
   it("index 0", () =>

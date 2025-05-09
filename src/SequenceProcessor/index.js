@@ -4,8 +4,7 @@ import { Value } from "../lib/value.js"
 import { GenericBatchIterable, BatchIterable } from "batch-iterable"
 import includes from "./includes.js"
 import SequenceToObject from "../SequenceToObject.js"
-import SequenceToStream from "../SequenceToStream.js"
-import { toStream } from "./toStream.js"
+import { toIterableBuffer } from "./toIterableBuffer.js"
 /**
  * @template {[Path, Value] | [Path, Value, number, number]} T
  * @extends {GenericBatchIterable<T>}
@@ -42,8 +41,8 @@ export class GenericSequenceProcessor extends GenericBatchIterable {
    * Build an stream back from the sequence
    * @returns {BatchIterable}
    */
-  toStream() {
-    return new BatchIterable(toStream(this.iterable))
+  toIterableBuffer() {
+    return new BatchIterable(toIterableBuffer(this.iterable))
   }
 }
 

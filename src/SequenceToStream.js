@@ -2,7 +2,6 @@
 import {
   mergeBuffers,
   getCommonPathIndex,
-  valueToBuffer,
   fromEndToIndex,
   fromIndexToEnd,
   pathSegmentTerminator,
@@ -120,13 +119,11 @@ class SequenceToStream {
         if (index !== commonPathIndex) {
           buffers.push(OPEN_BRACES)
         }
-        buffers.push(valueToBuffer(
-          pathSegment,
-        ))
+        buffers.push(pathSegment.encoded)
         buffers.push(COLON)
       }
     }
-    const v = valueToBuffer(value)
+    const v = value.encoded
     this.context = v instanceof EmptyObj ? CONTEXT.OBJECT : v instanceof EmptyArray ? CONTEXT.ARRAY : CONTEXT.NULL
     buffers.push(v)
     return mergeBuffers(buffers)
