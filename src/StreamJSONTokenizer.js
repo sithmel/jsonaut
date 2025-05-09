@@ -96,15 +96,7 @@ const STATE = {
  * @private
  */
 class StreamJSONTokenizer {
-  /**
-   * Convert a stream of bytes (in chunks of ArrayBuffers) to a sequence tokens
-   * @param {{ maxDepth?: number }} options
-   */
-  constructor(options = {}) {
-    const { maxDepth = Infinity } = options
-    this.maxDepth = maxDepth
-    this.currentDepth = 0
-
+  constructor() {
     this.offsetIndexFromBeginning = 0
     this.state = STATE.IDLE
 
@@ -112,6 +104,8 @@ class StreamJSONTokenizer {
     this.outputTokenStart = null
 
     this.currentBuffer = new Uint8Array()
+    this.maxDepth = false
+    this.currentDepth = 0
   }
 
   /**
@@ -203,8 +197,8 @@ class StreamJSONTokenizer {
       switch (this.state) {
         case STATE.STRING:
           if (byte === CHAR_CODE.QUOTE) {
-            if (this.currentDepth <= this.maxDepth) {
-              yield [
+            if (this.currentDepth === 0) {
+              this.maxDepth = yield [
                 TOKEN.STRING,
                 this._getOutputTokenStart(),
                 currentBufferIndex + 1,
@@ -227,86 +221,94 @@ class StreamJSONTokenizer {
           }
           if (byte === CHAR_CODE.QUOTE) {
             this.state = STATE.STRING
-            if (this.currentDepth <= this.maxDepth)
+            if (this.currentDepth === 0)
               this._startCaptureOutput(currentBufferIndex)
           } else if (byte === CHAR_CODE.T) {
             this.state = STATE.TRUE
-            if (this.currentDepth <= this.maxDepth)
+            if (this.currentDepth === 0)
               this._startCaptureOutput(currentBufferIndex)
           } else if (byte === CHAR_CODE.F) {
             this.state = STATE.FALSE
-            if (this.currentDepth <= this.maxDepth)
+            if (this.currentDepth === 0)
               this._startCaptureOutput(currentBufferIndex)
           } else if (byte === CHAR_CODE.N) {
             this.state = STATE.NULL
-            if (this.currentDepth <= this.maxDepth)
+            if (this.currentDepth === 0)
               this._startCaptureOutput(currentBufferIndex)
           } else if (
             byte === CHAR_CODE.MINUS ||
             (CHAR_CODE.N0 <= byte && byte <= CHAR_CODE.N9)
           ) {
             this.state = STATE.NUMBER
-            if (this.currentDepth <= this.maxDepth)
+            if (this.currentDepth === 0)
               this._startCaptureOutput(currentBufferIndex)
           } else if (byte === CHAR_CODE.OPEN_BRACES) {
-            if (this.currentDepth === this.maxDepth) {
-              this._startCaptureOutput(currentBufferIndex)
-            } else if (this.currentDepth < this.maxDepth) {
-              yield [
+            if (this.maxDepth) {
+              if (this.currentDepth === 0) {
+                this._startCaptureOutput(currentBufferIndex)
+              }
+              this.currentDepth++
+            } else {
+              this.maxDepth = yield [
                 TOKEN.OPEN_BRACES,
                 currentBufferIndex,
                 currentBufferIndex + 1,
               ]
             }
-            this.currentDepth++
           } else if (byte === CHAR_CODE.CLOSED_BRACES) {
-            this.currentDepth--
-            if (this.currentDepth === this.maxDepth) {
-              yield [
-                TOKEN.SUB_OBJECT,
-                this._getOutputTokenStart(),
-                currentBufferIndex + 1,
-              ]
-            } else if (this.currentDepth < this.maxDepth) {
-              yield [
+            if (this.maxDepth && this.currentDepth > 0) {
+              this.currentDepth--
+              if (this.currentDepth === 0) {
+                this.maxDepth = yield [
+                  TOKEN.SUB_OBJECT,
+                  this._getOutputTokenStart(),
+                  currentBufferIndex + 1,
+                ]
+              }
+            } else {
+              this.maxDepth = yield [
                 TOKEN.CLOSED_BRACES,
                 currentBufferIndex,
                 currentBufferIndex + 1,
               ]
             }
           } else if (byte === CHAR_CODE.OPEN_BRACKETS) {
-            if (this.currentDepth === this.maxDepth) {
-              this._startCaptureOutput(currentBufferIndex)
-            } else if (this.currentDepth < this.maxDepth) {
-              yield [
+            if (this.maxDepth) {
+              if (this.currentDepth === 0) {
+                this._startCaptureOutput(currentBufferIndex)
+              }
+              this.currentDepth++
+            } else {
+              this.maxDepth = yield [
                 TOKEN.OPEN_BRACKET,
                 currentBufferIndex,
                 currentBufferIndex + 1,
               ]
             }
-            this.currentDepth++
           } else if (byte === CHAR_CODE.CLOSED_BRACKETS) {
-            this.currentDepth--
-            if (this.currentDepth === this.maxDepth) {
-              yield [
-                TOKEN.SUB_OBJECT,
-                this._getOutputTokenStart(),
-                currentBufferIndex + 1,
-              ]
-            } else if (this.currentDepth < this.maxDepth) {
-              yield [
+            if (this.maxDepth && this.currentDepth > 0) {
+              this.currentDepth--
+              if (this.currentDepth === 0) {
+                this.maxDepth = yield [
+                  TOKEN.SUB_OBJECT,
+                  this._getOutputTokenStart(),
+                  currentBufferIndex + 1,
+                ]
+              }
+            } else {
+              this.maxDepth = yield [
                 TOKEN.CLOSED_BRACKET,
                 currentBufferIndex,
                 currentBufferIndex + 1,
               ]
             }
           } else if (byte === CHAR_CODE.COLON) {
-            if (this.currentDepth <= this.maxDepth) {
-              yield [TOKEN.COLON, currentBufferIndex, currentBufferIndex + 1]
+            if (this.currentDepth === 0) {
+              this.maxDepth = yield [TOKEN.COLON, currentBufferIndex, currentBufferIndex + 1]
             }
           } else if (byte === CHAR_CODE.COMMA) {
-            if (this.currentDepth <= this.maxDepth) {
-              yield [TOKEN.COMMA, currentBufferIndex, currentBufferIndex + 1]
+            if (this.currentDepth === 0) {
+              this.maxDepth = yield [TOKEN.COMMA, currentBufferIndex, currentBufferIndex + 1]
             }
           } else {
             throw new ParsingError(
@@ -340,8 +342,8 @@ class StreamJSONTokenizer {
 
         case STATE.TRUE3:
           if (byte === CHAR_CODE.E) {
-            if (this.currentDepth <= this.maxDepth) {
-              yield [
+            if (this.currentDepth === 0) {
+              this.maxDepth = yield [
                 TOKEN.TRUE,
                 this._getOutputTokenStart(),
                 currentBufferIndex + 1,
@@ -384,8 +386,8 @@ class StreamJSONTokenizer {
 
         case STATE.FALSE4:
           if (byte === CHAR_CODE.E) {
-            if (this.currentDepth <= this.maxDepth) {
-              yield [
+            if (this.currentDepth === 0) {
+              this.maxDepth = yield [
                 TOKEN.FALSE,
                 this._getOutputTokenStart(),
                 currentBufferIndex + 1,
@@ -419,8 +421,8 @@ class StreamJSONTokenizer {
 
         case STATE.NULL3:
           if (byte === CHAR_CODE.L) {
-            if (this.currentDepth <= this.maxDepth) {
-              yield [
+            if (this.currentDepth === 0) {
+              this.maxDepth = yield [
                 TOKEN.NULL,
                 this._getOutputTokenStart(),
                 currentBufferIndex + 1,
@@ -444,8 +446,8 @@ class StreamJSONTokenizer {
           ) {
           } else {
             currentBufferIndex--
-            if (this.currentDepth <= this.maxDepth) {
-              yield [
+            if (this.currentDepth === 0) {
+              this.maxDepth = yield [
                 TOKEN.NUMBER,
                 this._getOutputTokenStart(),
                 currentBufferIndex + 1,

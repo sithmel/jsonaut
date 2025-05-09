@@ -36,8 +36,10 @@ class StreamToSequence {
     this.currentDepthInObject = 0
 
     const { startingPath = [] } = options
-
-    this.tokenizer = new StreamJSONTokenizer({ maxDepth })
+    /** @type {(arg0: Path) => boolean} */
+    this._isMaxDepth = (path) => path.length >= maxDepth
+    this.maxDepth = false
+    this.tokenizer = new StreamJSONTokenizer()
     this.state = STATE.VALUE
     /** @type {Array<STATE>}
      * @private
@@ -47,6 +49,25 @@ class StreamToSequence {
     this.stringBuffer = new Uint8Array() // this stores strings temporarily (keys and values)
 
     this.emptyObjectOrArrayStart = 0 // this is used to store the start of an empty object or array
+  }
+
+  /**
+   * Check if the current path is at max depth
+   * @param {number | CachedString} segment
+   * @returns {void}
+   */
+  _pushCurrentPath(segment) {
+    this.currentPath = this.currentPath.push(segment)
+    this.maxDepth = this._isMaxDepth(this.currentPath)
+  }
+
+  /**
+   * Check if the current path is at max depth
+   * @returns {void}
+   */
+  _popCurrentPath() {
+    this.currentPath = this.currentPath.pop()
+    this.maxDepth = this._isMaxDepth(this.currentPath)
   }
 
   /**
@@ -134,11 +155,16 @@ class StreamToSequence {
    * @returns {Iterable<[Path, Value, number, number]>} - path, value, byte start, and byte end when the value is in the buffer
    */
   *iterChunk(chunk) {
-    for (const [token, startToken, endToken] of this.tokenizer.iter(chunk)) {
+    const iterator = this.tokenizer.iter(chunk)[Symbol.iterator]()
+    while (true) {
+      const result = iterator.next(this.maxDepth)
+      if (result.done) {
+        break
+      }
+      const [token, startToken, endToken] = result.value
       switch (this.state) {
         case STATE.VALUE: // any value
           if (token === TOKEN.STRING) {
-            const value = 
             yield [
               this.currentPath,
               new CachedString(this.tokenizer.getOutputBuffer(startToken, endToken)),
@@ -151,11 +177,11 @@ class StreamToSequence {
             this.state = STATE.OPEN_OBJECT
           } else if (token === TOKEN.OPEN_BRACKET) {
             this.emptyObjectOrArrayStart = startToken + this.tokenizer.offsetIndexFromBeginning
-            this.currentPath = this.currentPath.push(0)
+            this._pushCurrentPath(0)
             this.state = STATE.VALUE
             this._pushState(STATE.CLOSE_ARRAY)
           } else if (token === TOKEN.CLOSED_BRACKET) { // empty array
-            this.currentPath = this.currentPath.pop()
+            this._popCurrentPath()
             yield [
               this.currentPath,
               emptyArrayValue,
@@ -255,7 +281,7 @@ class StreamToSequence {
 
         case STATE.CLOSE_KEY: // after the key is over
           if (token === TOKEN.COLON) {
-            this.currentPath = this.currentPath.push(new CachedString(this.stringBuffer))
+            this._pushCurrentPath(new CachedString(this.stringBuffer))
             this._pushState(STATE.CLOSE_OBJECT)
             this.state = STATE.VALUE
           } else {
@@ -268,10 +294,10 @@ class StreamToSequence {
 
         case STATE.CLOSE_OBJECT: // after the value is parsed and the object can be closed
           if (token === TOKEN.CLOSED_BRACES) {
-            this.currentPath = this.currentPath.pop()
+            this._popCurrentPath()
             this.state = this._popState()
           } else if (token === TOKEN.COMMA) {
-            this.currentPath = this.currentPath.pop()
+            this._popCurrentPath()
             this.state = STATE.OPEN_KEY
           } else {
             throw new ParsingError(
@@ -284,15 +310,15 @@ class StreamToSequence {
         case STATE.CLOSE_ARRAY: // array ready to end, or restart after the comma
           if (token === TOKEN.COMMA) {
             const previousIndex = this.currentPath.get(this.currentPath.length - 1)
-            this.currentPath = this.currentPath.pop()
+            this._popCurrentPath()
             if (typeof previousIndex !== "number") {
               throw new Error("Array index should be a number")
             }
-            this.currentPath = this.currentPath.push(previousIndex + 1) // next item in the array
+            this._pushCurrentPath(previousIndex + 1)
             this._pushState(STATE.CLOSE_ARRAY)
             this.state = STATE.VALUE
           } else if (token === TOKEN.CLOSED_BRACKET) {
-            this.currentPath = this.currentPath.pop() // array is over
+            this._popCurrentPath()
             this.state = this._popState()
           } else {
             throw new ParsingError(
