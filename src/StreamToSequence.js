@@ -1,9 +1,22 @@
 //@ts-check
-import { ParsingError, decodeAndParse, stringifyAndEncode } from "./lib/utils.js"
+import {
+  ParsingError,
+  decodeAndParse,
+  stringifyAndEncode,
+} from "./lib/utils.js"
 import StreamJSONTokenizer, { TOKEN } from "./StreamJSONTokenizer.js"
 import { Path } from "./lib/path.js"
-import { CachedString, CachedNumber, CachedSubObject, trueValue, nullValue, falseValue, emptyArrayValue, emptyObjValue, Value } from "./lib/value.js"
-
+import {
+  CachedString,
+  CachedNumber,
+  CachedSubObject,
+  trueValue,
+  nullValue,
+  falseValue,
+  emptyArrayValue,
+  emptyObjValue,
+  Value,
+} from "./lib/value.js"
 
 /**
  * Enum for parser state
@@ -28,24 +41,36 @@ class StreamToSequence {
   /**
    * Convert a stream of bytes (in chunks) into a sequence of path/value pairs
    * @param {Object} [options]
-   * @param {number} [options.maxDepth=Infinity] - Max parsing depth
+   * @param {number} [options.maxDepth=null] - Max parsing depth
+   * @param {(arg0: Path) => boolean} [options.isMaxDepthReached=null] - Max parsing depth
    * @param {import("./baseTypes").JSONPathType} [options.startingPath] - The parser will consider this path as it is initial (useful to resume)
    */
   constructor(options = {}) {
-    const { maxDepth = Infinity } = options
-    this.currentDepthInObject = 0
+    const { maxDepth = null, isMaxDepthReached = null, startingPath = [] } = options
 
-    const { startingPath = [] } = options
-    /** @type {(arg0: Path) => boolean} */
-    this._isMaxDepth = (path) => path.length >= maxDepth
-    this.maxDepth = false
+    if (maxDepth != null && isMaxDepthReached != null) {
+      throw new Error(
+        "You can only set one of maxDepth or isMaxDepthReached",
+      )
+    }
+    if (maxDepth != null){
+      /** @type {(arg0: Path) => boolean} */
+      this._isMaxDepthReached = (path) => path.length >= maxDepth
+    } else if (isMaxDepthReached != null) {
+      this._isMaxDepthReached = isMaxDepthReached
+    } else {
+      this._isMaxDepthReached = () => false
+    }
+
+    this.maxDepthReached = false
     this.tokenizer = new StreamJSONTokenizer()
     this.state = STATE.VALUE
     /** @type {Array<STATE>}
      * @private
      */
     this.stateStack = this._initStateStack(startingPath)
-    this.currentPath = this._initCurrentPath(startingPath) // a combination of buffers (object keys) and numbers (array index)
+    this.currentPath = new Path() // this is the current path
+    this._initCurrentPath(startingPath) // a combination of buffers (object keys) and numbers (array index)
     this.stringBuffer = new Uint8Array() // this stores strings temporarily (keys and values)
 
     this.emptyObjectOrArrayStart = 0 // this is used to store the start of an empty object or array
@@ -57,8 +82,8 @@ class StreamToSequence {
    * @returns {void}
    */
   _pushCurrentPath(segment) {
-    this.currentPath = this.currentPath.push(segment)
-    this.maxDepth = this._isMaxDepth(this.currentPath)
+    this.currentPath = this.currentPath.withSegmentedAdded(segment)
+    this.maxDepthReached = this._isMaxDepthReached(this.currentPath)
   }
 
   /**
@@ -66,27 +91,23 @@ class StreamToSequence {
    * @returns {void}
    */
   _popCurrentPath() {
-    this.currentPath = this.currentPath.pop()
-    this.maxDepth = this._isMaxDepth(this.currentPath)
+    this.currentPath = this.currentPath.withSegmentedRemoved()
+    this.maxDepthReached = this._isMaxDepthReached(this.currentPath)
   }
 
   /**
    * Generate currentPath from a path
    * @private
    * @param {import("./baseTypes").JSONPathType} path
-   * @returns {Path}
    */
   _initCurrentPath(path) {
-    const encoder = new TextEncoder()
-    let currentPath = new Path()
     for (const segment of path) {
-      currentPath = currentPath.push(
+      this._pushCurrentPath(
         typeof segment === "string"
-          ? new CachedString(encoder.encode(`"${segment}"`))
+          ? new CachedString(stringifyAndEncode(segment))
           : segment,
       )
     }
-    return currentPath
   }
 
   /**
@@ -135,7 +156,7 @@ class StreamToSequence {
     return this.state === STATE.END
   }
 
-    /**
+  /**
    * Parse a json or json fragment from a buffer, split in chunks (ArrayBuffers)
    * and yields a sequence of path/value pairs
    * It also yields the starting and ending byte of each value
@@ -157,7 +178,7 @@ class StreamToSequence {
   *iterChunk(chunk) {
     const iterator = this.tokenizer.iter(chunk)[Symbol.iterator]()
     while (true) {
-      const result = iterator.next(this.maxDepth)
+      const result = iterator.next(this.maxDepthReached)
       if (result.done) {
         break
       }
@@ -167,20 +188,25 @@ class StreamToSequence {
           if (token === TOKEN.STRING) {
             yield [
               this.currentPath,
-              new CachedString(this.tokenizer.getOutputBuffer(startToken, endToken)),
+              new CachedString(
+                this.tokenizer.getOutputBuffer(startToken, endToken),
+              ),
               startToken + this.tokenizer.offsetIndexFromBeginning,
               endToken + this.tokenizer.offsetIndexFromBeginning,
             ]
             this.state = this._popState()
           } else if (token === TOKEN.OPEN_BRACES) {
-            this.emptyObjectOrArrayStart = startToken + this.tokenizer.offsetIndexFromBeginning
+            this.emptyObjectOrArrayStart =
+              startToken + this.tokenizer.offsetIndexFromBeginning
             this.state = STATE.OPEN_OBJECT
           } else if (token === TOKEN.OPEN_BRACKET) {
-            this.emptyObjectOrArrayStart = startToken + this.tokenizer.offsetIndexFromBeginning
+            this.emptyObjectOrArrayStart =
+              startToken + this.tokenizer.offsetIndexFromBeginning
             this._pushCurrentPath(0)
             this.state = STATE.VALUE
             this._pushState(STATE.CLOSE_ARRAY)
-          } else if (token === TOKEN.CLOSED_BRACKET) { // empty array
+          } else if (token === TOKEN.CLOSED_BRACKET) {
+            // empty array
             this._popCurrentPath()
             yield [
               this.currentPath,
@@ -191,12 +217,12 @@ class StreamToSequence {
             this.state = this._popState()
             this.state = this._popState()
           } else if (token === TOKEN.TRUE) {
-              yield [
-                this.currentPath,
-                trueValue,
-                startToken + this.tokenizer.offsetIndexFromBeginning,
-                endToken + this.tokenizer.offsetIndexFromBeginning,
-              ]
+            yield [
+              this.currentPath,
+              trueValue,
+              startToken + this.tokenizer.offsetIndexFromBeginning,
+              endToken + this.tokenizer.offsetIndexFromBeginning,
+            ]
             this.state = this._popState()
           } else if (token === TOKEN.FALSE) {
             yield [
@@ -217,7 +243,9 @@ class StreamToSequence {
           } else if (token === TOKEN.NUMBER) {
             yield [
               this.currentPath,
-              new CachedNumber(this.tokenizer.getOutputBuffer(startToken, endToken)),
+              new CachedNumber(
+                this.tokenizer.getOutputBuffer(startToken, endToken),
+              ),
               startToken + this.tokenizer.offsetIndexFromBeginning,
               endToken + this.tokenizer.offsetIndexFromBeginning,
             ]
@@ -225,7 +253,9 @@ class StreamToSequence {
           } else if (token === TOKEN.SUB_OBJECT) {
             yield [
               this.currentPath,
-              new CachedSubObject(this.tokenizer.getOutputBuffer(startToken, endToken)),
+              new CachedSubObject(
+                this.tokenizer.getOutputBuffer(startToken, endToken),
+              ),
               startToken + this.tokenizer.offsetIndexFromBeginning,
               endToken + this.tokenizer.offsetIndexFromBeginning,
             ]
@@ -309,7 +339,9 @@ class StreamToSequence {
 
         case STATE.CLOSE_ARRAY: // array ready to end, or restart after the comma
           if (token === TOKEN.COMMA) {
-            const previousIndex = this.currentPath.get(this.currentPath.length - 1)
+            const previousIndex = this.currentPath.get(
+              this.currentPath.length - 1,
+            )
             this._popCurrentPath()
             if (typeof previousIndex !== "number") {
               throw new Error("Array index should be a number")

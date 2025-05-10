@@ -11,16 +11,11 @@ import StreamToSequence from "../src/StreamToSequence.js"
  * @returns {[Array<string | number>, any, number, number]}
  */
 function decodePathAndValue([path, value, start, end]) {
-  return [
-    path.decoded,
-    value.decoded,
-    start,
-    end,
-  ]
+  return [path.decoded, value.decoded, start, end]
 }
 
 /**
- * @param {StreamToSequence} parser 
+ * @param {StreamToSequence} parser
  * @returns {(text: string) => Array<[Array<string | number>, any, number, number]>}
  */
 function parserToSeq(parser) {
@@ -117,9 +112,7 @@ describe("StreamToSequence", () => {
     })
     it("works with a minimal object", () => {
       const seq = parserIter(`{"test":1}`)
-      assert.deepEqual(seq, [
-        [["test"], 1, 8, 9],
-      ])
+      assert.deepEqual(seq, [[["test"], 1, 8, 9]])
       assert.equal(parser.isFinished(), true)
     })
     it("works with an object with multiple prop", () => {
@@ -139,9 +132,7 @@ describe("StreamToSequence", () => {
     })
     it("works with a minimal array", () => {
       const seq = parserIter(`[1]`)
-      assert.deepEqual(seq, [
-        [[0], 1, 1, 2],
-      ])
+      assert.deepEqual(seq, [[[0], 1, 1, 2]])
       assert.equal(parser.isFinished(), true)
     })
     it("works with an array with multiple items", () => {
@@ -156,9 +147,7 @@ describe("StreamToSequence", () => {
   describe("nesting", () => {
     it("works with object nested into object (1)", () => {
       const seq = parserIter('{"test1":{"test2":1}}')
-      assert.deepEqual(seq, [
-        [["test1", "test2"], 1, 18, 19],
-      ])
+      assert.deepEqual(seq, [[["test1", "test2"], 1, 18, 19]])
       assert.equal(parser.isFinished(), true)
     })
 
@@ -211,9 +200,7 @@ describe("StreamToSequence", () => {
 
     it("works with object nested into object (1)", () => {
       const seq = parserIter('{"test1":{"test2":1}}')
-      assert.deepEqual(seq, [
-        [["test1"], { test2: 1 }, 9, 20],
-      ])
+      assert.deepEqual(seq, [[["test1"], { test2: 1 }, 9, 20]])
       assert.equal(parser.isFinished(), true)
     })
 
@@ -254,6 +241,57 @@ describe("StreamToSequence", () => {
     })
   })
 
+  describe("nesting with isMaxDepthReached", () => {
+    beforeEach(() => {
+      parser = new StreamToSequence({
+        isMaxDepthReached: (path) => {
+          const segment = path.get(path.length - 1)
+          return (
+            segment != null &&
+            typeof segment !== "number" &&
+            segment.decoded === "grouped"
+          )
+        },
+      })
+      parserIter = parserToSeq(parser)
+    })
+
+    it("works like before", () => {
+      const seq = parserIter('{"test1":{"test2":1}}')
+      assert.deepEqual(seq, [[["test1", "test2"], 1, 18, 19]])
+      assert.equal(parser.isFinished(), true)
+    })
+
+    it("works as a leaf", () => {
+      const seq = parserIter('{"test1":{"grouped":1}, "test3":2}')
+      assert.deepEqual(seq, [
+        [["test1", "grouped"], 1, 20, 21],
+        [["test3"], 2, 32, 33],
+      ])
+      assert.equal(parser.isFinished(), true)
+    })
+
+    it("works in a simple case", () => {
+      const seq = parserIter('{"grouped":{"test":1}, "test3":{"test4":false}}')
+      assert.deepEqual(seq, [
+        [["grouped"], { test: 1 }, 11, 21],
+        [["test3", "test4"], false, 40, 45],
+      ])
+      assert.equal(parser.isFinished(), true)
+    })
+
+    it("works in a complex case", () => {
+      const seq = parserIter('[{"id": 1, "grouped": [1, 2, 3]}, {"id": 2, "grouped": [4, 5, 6]}]')
+      assert.deepEqual(seq, [
+        [[0, 'id'], 1, 8, 9],
+        [[0, 'grouped'], [1, 2, 3], 22, 31],
+        [[1, 'id'], 2, 41, 42],
+        [[1, 'grouped'], [4, 5, 6], 55, 64],
+      ])
+      assert.equal(parser.isFinished(), true)
+    })
+  })
+
   describe("startingPath", () => {
     /** @type TextEncoder */
     let encoder
@@ -266,9 +304,7 @@ describe("StreamToSequence", () => {
       for (const kv of parser.iterChunk(encoder.encode('{"test2":1}}'))) {
         seq.push(decodePathAndValue(kv))
       }
-      assert.deepEqual(seq, [
-        [["test1", "test2"], 1, 9, 10],
-      ])
+      assert.deepEqual(seq, [[["test1", "test2"], 1, 9, 10]])
       assert.equal(parser.isFinished(), true)
     })
 
@@ -282,9 +318,7 @@ describe("StreamToSequence", () => {
         seq.push(decodePathAndValue(kv))
       }
 
-      assert.deepEqual(seq, [
-        [["test1", "test2"], 1, 9, 10],
-      ])
+      assert.deepEqual(seq, [[["test1", "test2"], 1, 9, 10]])
       assert.equal(parser.isFinished(), true)
     })
 

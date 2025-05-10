@@ -9,20 +9,20 @@ describe("Path", () => {
   let path
   beforeEach(() => {
     path = new Path()
-    path = path.push(
+    path = path.withSegmentedAdded(
       new CachedString(
         new Uint8Array([34, 104, 101, 108, 108, 111, 34]),
       ),
     )
-    path = path.push(1)
-    path = path.push(2)
-    path = path.push(3)
+    path = path.withSegmentedAdded(1)
+    path = path.withSegmentedAdded(2)
+    path = path.withSegmentedAdded(3)
   })
   it("decodes path", () => {
     assert.deepEqual(path.decoded, ["hello", 1, 2, 3])
   })
   it("pops and gets", () => {
-    const newPath = path.pop()
+    const newPath = path.withSegmentedRemoved()
     assert.deepEqual(newPath.decoded, ["hello", 1, 2])
     const value = newPath.get(0)
     assert(value instanceof CachedString)

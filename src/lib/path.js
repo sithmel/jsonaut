@@ -20,16 +20,20 @@ export class Path {
     return this.array.length - this.offset
   }
 
-  /** 
+  /**
+   * Return a new Path with the last segment added
    * @param {CachedString|number} segment
    * @return {Path}
-  */
-  push(segment) {
+   */
+  withSegmentedAdded(segment) {
     return new Path([...this.array, segment])
   }
 
-  /** @return {Path} */
-  pop() {
+  /** 
+   * Return a new Path with the last segment removed
+   * @return {Path} 
+   */
+  withSegmentedRemoved() {
     return new Path(this.array.slice(0, -1))
   }
 
