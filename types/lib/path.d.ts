@@ -1,47 +1,85 @@
 /**
+ * Compare two pathSegments for equality
+ * @param {JSONSegmentPathEncodedType|null} segment1
+ * @param {JSONSegmentPathEncodedType|null} segment2
+ * @returns {boolean}
+ */
+export function areSegmentsEqual(segment1: JSONSegmentPathEncodedType | null, segment2: JSONSegmentPathEncodedType | null): boolean;
+/**
  *
- * @param {import("../baseTypes").JSONPathType} path
+ * @param {JSONPathType} path
  * @returns {Path}
  */
-export function JSONPathToPath(path: import("../baseTypes").JSONPathType): Path;
+export function JSONPathToPath(path: JSONPathType): Path;
 /**
- * @private
+ * @typedef {CachedString|number} JSONSegmentPathEncodedType
+ */
+/**
+ * @typedef {string | number} JSONSegmentPathType
+ */
+/**
+ * @typedef {Array<JSONSegmentPathType>} JSONPathType
  */
 export class Path {
     /**
-     * @param {Array<CachedString|number>} [array]
+     * @param {Array<JSONSegmentPathEncodedType>} [array]
      * @param {number} [offset]
      */
-    constructor(array?: Array<CachedString | number>, offset?: number);
-    array: (number | CachedString)[];
+    constructor(array?: Array<JSONSegmentPathEncodedType>, offset?: number);
+    array: JSONSegmentPathEncodedType[];
     offset: number;
     /** @return {number}*/
     get length(): number;
     /**
-     * @param {CachedString|number} segment
+     * Return a new Path with the last segment added
+     * @param {JSONSegmentPathEncodedType} segment
      * @return {Path}
-    */
-    push(segment: CachedString | number): Path;
-    /** @return {Path} */
-    pop(): Path;
+     */
+    withSegmentedAdded(segment: JSONSegmentPathEncodedType): Path;
+    /**
+     * Return a new Path with the last segment removed
+     * @return {Path}
+     */
+    withSegmentedRemoved(): Path;
     /**
      * @param {number} index
-     * @return {?CachedString|number}
+     * @return {?JSONSegmentPathEncodedType}
      */
-    get(index: number): (CachedString | number) | null;
+    get(index: number): JSONSegmentPathEncodedType | null;
     /**
-     * @param {(arg0: CachedString|number) => any} func
+     * @param {(arg0: JSONSegmentPathEncodedType) => any} func
      * @return {Array<any>}
      */
-    map(func: (arg0: CachedString | number) => any): Array<any>;
+    map(func: (arg0: JSONSegmentPathEncodedType) => any): Array<any>;
     /**
      * @return {Path}
      * */
     rest(): Path;
-    /** @return {import("../baseTypes").JSONPathType} */
-    get decoded(): import("../baseTypes").JSONPathType;
+    /** @return {JSONPathType} */
+    get decoded(): JSONPathType;
     /** @return {Array<Uint8Array|number>} */
     get encoded(): Array<Uint8Array | number>;
+    /**
+     * Yields item arrays from end back to index, yield true on last
+     * @param {number} index
+     * @returns {Iterable<[number, JSONSegmentPathEncodedType]>}
+     */
+    fromEndToIndex(index: number): Iterable<[number, JSONSegmentPathEncodedType]>;
+    /**
+     * Yields item arrays from index to end, yield true on first
+     * @param {number} index
+     * @returns {Iterable<[number, JSONSegmentPathEncodedType]>}
+     */
+    fromIndexToEnd(index: number): Iterable<[number, JSONSegmentPathEncodedType]>;
+    /**
+     * Return oldPath and newPath excluding the common part
+     * @param {Path} newPath
+     * @returns {number}
+     */
+    getCommonPathIndex(newPath: Path): number;
 }
+export type JSONSegmentPathEncodedType = CachedString | number;
+export type JSONSegmentPathType = string | number;
+export type JSONPathType = Array<JSONSegmentPathType>;
 import { CachedString } from "./value.js";
 //# sourceMappingURL=path.d.ts.map

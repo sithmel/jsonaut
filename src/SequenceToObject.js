@@ -1,7 +1,6 @@
 //@ts-check
 import { Path } from "./lib/path.js"
 import { Value, CachedString } from "./lib/value.js"
-import {getCommonPathIndex, fromIndexToEnd} from "./lib/utils.js"
 /**
  * @private
  * @param {CachedString|number|null} pathSegment
@@ -72,7 +71,7 @@ class SequenceToObject {
       this.object = initObject(path.get(0))
     }
 
-    const commonPathIndex = getCommonPathIndex(this.previousPath, path)
+    const commonPathIndex = this.previousPath.getCommonPathIndex(path)
     let currentObject = this.object
 
     for (let i = 0; i < path.length - 1; i++) {

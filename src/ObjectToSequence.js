@@ -20,7 +20,7 @@ class ObjectToSequence {
   /**
    * yields path/value pairs from a given object
    * @param {any} obj - Any JS value
-   * @param {import("./baseTypes").JSONPathType} [currentPath] - Only for internal use
+   * @param {import("./lib/path.js").JSONPathType} [currentPath] - Only for internal use
    * @returns {Iterable<[Path, Value]>}
    */
   *iter(obj, currentPath = []) {

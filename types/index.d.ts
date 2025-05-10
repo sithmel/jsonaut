@@ -1,32 +1,8 @@
-/**
- *
- * @param {AsyncIterable<Uint8Array> | Iterable<Uint8Array>} stream
- * @param {Object} [options]
- * @param {number} [options.maxDepth=Infinity] - Max parsing depth
- * @param {import("./baseTypes").JSONPathType} [options.startingPath] - The parser will consider this path as it is initial (useful to resume)
- * @returns {StreamSequenceProcessor}
- */
-export function streamToIterable(stream: AsyncIterable<Uint8Array> | Iterable<Uint8Array>, options?: {
-    maxDepth?: number | undefined;
-    startingPath?: import("./baseTypes").JSONPathType | undefined;
-}): StreamSequenceProcessor;
-/**
- *
- * @param {any} obj
- * @param {Object} [options]
- * @param {number} [options.maxDepth=Infinity] - Max parsing depth
- * @returns {ObjectSequenceProcessor}
- */
-export function objectToIterable(obj: any, options?: {
-    maxDepth?: number | undefined;
-}): ObjectSequenceProcessor;
 export { default as getPathMatcher } from "./lib/pathMatcherParser.js";
-export { Path } from "./lib/path.js";
-export { Value } from "./lib/value.js";
 export { default as ObjectToSequence } from "./ObjectToSequence.js";
 export { default as StreamToSequence } from "./StreamToSequence.js";
 export { default as SequenceToObject } from "./SequenceToObject.js";
 export { default as SequenceToStream } from "./SequenceToStream.js";
-import { StreamSequenceProcessor } from "./SequenceProcessor/index.js";
-import { ObjectSequenceProcessor } from "./SequenceProcessor/index.js";
+export { streamToIterable } from "./streamToIterable.js";
+export { objectToIterable } from "./objectToIterable.js";
 //# sourceMappingURL=index.d.ts.map

@@ -1,6 +1,6 @@
 //@ts-check
 
-import { Path } from "./path.js"
+import { Path, areSegmentsEqual } from "./path.js"
 import { CachedString } from "./value.js"
 
 /**
@@ -197,7 +197,7 @@ export class SegmentMatcher extends BaseMatcher {
   /**
    * direct match of a number of a string
    * @param {Array<BaseMatcher>} [matchers]
-   * @param {import("../baseTypes").JSONSegmentPathType} segmentMatch
+   * @param {import("../lib/path.js").JSONSegmentPathType} segmentMatch
    */
   constructor(segmentMatch, matchers) {
     super(matchers)

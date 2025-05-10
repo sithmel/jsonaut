@@ -1,6 +1,6 @@
 //@ts-check
 
-import { ParsingError, isWhitespace } from "./utils.js"
+import { ParsingError } from "./utils.js"
 
 import {
   AnyMatcher,
@@ -15,6 +15,16 @@ const STATE = {
   STRING_DOUBLE_QUOTE: "STRING_DOUBLE_QUOTE",
   NUMBER_OR_SLICE: "NUMBER_OR_SLICE",
   COMMENT: "COMMENT",
+}
+
+/**
+ * Check if there is a white space
+ * @private
+ * @param {string} c
+ * @returns {boolean}
+ */
+export function isWhitespace(c) {
+  return c === "\n" || c === " " || c === "\r" || c === "\t"
 }
 
 /**

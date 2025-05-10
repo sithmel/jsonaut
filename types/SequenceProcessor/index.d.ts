@@ -19,16 +19,9 @@ export class GenericSequenceProcessor<T extends [Path, Value] | [Path, Value, nu
     toObject(): Promise<any>;
     /**
      * Build an stream back from the sequence
-     * @param {(arg0: Uint8Array<ArrayBufferLike>) => Promise<void>} onData
-     * @returns {Promise<void>}
-     */
-    toStream(onData: (arg0: Uint8Array<ArrayBufferLike>) => Promise<void>): Promise<void>;
-    /**
-     * Returns a general purpose batchiterable which is less strict in typing
-     * but lacks methods that requires the correct types to be enforced
      * @returns {BatchIterable}
      */
-    toBatchIterable(): BatchIterable;
+    toIterableBuffer(): BatchIterable;
 }
 /**
  * @extends {GenericSequenceProcessor<[Path, Value, number, number]>}
@@ -44,6 +37,6 @@ export class ObjectSequenceProcessor extends GenericSequenceProcessor<[Path, Val
 }
 import { Path } from "../lib/path.js";
 import { Value } from "../lib/value.js";
-import { GenericBatchIterable } from 'batch-iterable';
-import { BatchIterable } from 'batch-iterable';
+import { GenericBatchIterable } from "batch-iterable";
+import { BatchIterable } from "batch-iterable";
 //# sourceMappingURL=index.d.ts.map

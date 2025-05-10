@@ -1,0 +1,1 @@
+{"version":3,"file":"toIterableBuffer.d.ts","sourceRoot":"","sources":["../../src/SequenceProcessor/toIterableBuffer.js"],"names":[],"mappings":"AAKA;;;;GAIG;AACH,gDAHW,aAAa,CAAC,QAAQ,CAAC,CAAC,IAAI,EAAE,KAAK,CAAC,GAAC,CAAC,IAAI,EAAE,KAAK,EAAE,MAAM,EAAE,MAAM,CAAC,CAAC,CAAC,GAClE,aAAa,CAAC,QAAQ,CAAC,UAAU,CAAC,CAAC,CAmB/C;qBAzBoB,gBAAgB;sBACf,iBAAiB"}

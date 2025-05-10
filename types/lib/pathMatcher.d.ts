@@ -97,11 +97,11 @@ export class SegmentMatcher extends BaseMatcher {
     /**
      * direct match of a number of a string
      * @param {Array<BaseMatcher>} [matchers]
-     * @param {import("../baseTypes").JSONSegmentPathType} segmentMatch
+     * @param {import("../lib/path.js").JSONSegmentPathType} segmentMatch
      */
-    constructor(segmentMatch: import("../baseTypes").JSONSegmentPathType, matchers?: Array<BaseMatcher>);
+    constructor(segmentMatch: import("../lib/path.js").JSONSegmentPathType, matchers?: Array<BaseMatcher>);
     hasMatchedForLastTime: boolean;
-    segmentMatch: import("../baseTypes").JSONSegmentPathType;
+    segmentMatch: import("./path.js").JSONSegmentPathType;
     segmentMatchEncoded: number | Uint8Array<ArrayBufferLike>;
     /**
      * Check if this specific segment matches, without checking the children

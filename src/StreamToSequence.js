@@ -43,7 +43,7 @@ class StreamToSequence {
    * @param {Object} [options]
    * @param {number} [options.maxDepth=null] - Max parsing depth
    * @param {(arg0: Path) => boolean} [options.isMaxDepthReached=null] - Max parsing depth
-   * @param {import("./baseTypes").JSONPathType} [options.startingPath] - The parser will consider this path as it is initial (useful to resume)
+   * @param {import("./lib/path.js").JSONPathType} [options.startingPath] - The parser will consider this path as it is initial (useful to resume)
    */
   constructor(options = {}) {
     const { maxDepth = null, isMaxDepthReached = null, startingPath = [] } = options
@@ -98,7 +98,7 @@ class StreamToSequence {
   /**
    * Generate currentPath from a path
    * @private
-   * @param {import("./baseTypes").JSONPathType} path
+   * @param {import("./lib/path.js").JSONPathType} path
    */
   _initCurrentPath(path) {
     for (const segment of path) {
@@ -113,7 +113,7 @@ class StreamToSequence {
   /**
    * generate statestack from a path
    * @private
-   * @param {import("./baseTypes").JSONPathType} path
+   * @param {import("./lib/path.js").JSONPathType} path
    * @returns {Array<STATE>}
    */
   _initStateStack(path) {

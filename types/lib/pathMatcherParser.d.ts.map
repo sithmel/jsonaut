@@ -1,1 +1,1 @@
-{"version":3,"file":"pathMatcherParser.d.ts","sourceRoot":"","sources":["../../src/lib/pathMatcherParser.js"],"names":[],"mappings":";AAmBA;;;;GAIG;AACH,oCAHW,MAAM,OAAC,GACN,gBAAgB,CAgG3B;iCA7GM,kBAAkB"}
+{"version":3,"file":"pathMatcherParser.d.ts","sourceRoot":"","sources":["../../src/lib/pathMatcherParser.js"],"names":[],"mappings":"AAmBA;;;;;GAKG;AACH,gCAHW,MAAM,GACJ,OAAO,CAInB;;AAED;;;;GAIG;AACH,oCAHW,MAAM,OAAC,GACN,gBAAgB,CAgG3B;iCAvHM,kBAAkB"}

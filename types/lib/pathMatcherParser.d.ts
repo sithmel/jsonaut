@@ -1,3 +1,10 @@
+/**
+ * Check if there is a white space
+ * @private
+ * @param {string} c
+ * @returns {boolean}
+ */
+export function isWhitespace(c: string): boolean;
 export default parseIncludes;
 /**
  * parse and include expression and return a Matcher

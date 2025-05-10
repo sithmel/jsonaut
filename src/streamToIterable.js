@@ -7,7 +7,7 @@ import StreamToSequence from "./StreamToSequence.js"
  * @param {AsyncIterable<Uint8Array> | Iterable<Uint8Array>} stream 
  * @param {Object} [options]
  * @param {number} [options.maxDepth=Infinity] - Max parsing depth
- * @param {import("./baseTypes").JSONPathType} [options.startingPath] - The parser will consider this path as it is initial (useful to resume)
+ * @param {import("./lib/path.js").JSONPathType} [options.startingPath] - The parser will consider this path as it is initial (useful to resume)
  * @returns {StreamSequenceProcessor}
  */
 export function streamToIterable(stream, options) {

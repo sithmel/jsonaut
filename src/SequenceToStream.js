@@ -1,17 +1,6 @@
 //@ts-check
 import {
   mergeBuffers,
-  getCommonPathIndex,
-  fromEndToIndex,
-  fromIndexToEnd,
-  pathSegmentTerminator,
-  isPreviousPathInNewPath,
-  OPEN_BRACES,
-  CLOSE_BRACES,
-  OPEN_BRACKET,
-  CLOSE_BRACKET,
-  COMMA,
-  COLON,
 } from "./lib/utils.js"
 
 import { Path } from "./lib/path.js"
@@ -32,6 +21,25 @@ const CONTEXT = {
   OBJECT: "OBJECT",
   ARRAY: "ARRAY",
   NULL: "NULL",
+}
+
+const encoder = new TextEncoder()
+
+const OPEN_BRACES = encoder.encode("{")
+const CLOSE_BRACES = encoder.encode("}")
+const OPEN_BRACKET = encoder.encode("[")
+const CLOSE_BRACKET = encoder.encode("]")
+const COMMA = encoder.encode(",")
+const COLON = encoder.encode(":")
+
+/**
+ * "}" or "]"
+ * @private
+ * @param {number|CachedString|null} pathSegment
+ * @returns {Uint8Array}
+ */
+function pathSegmentTerminator(pathSegment) {
+  return pathSegment instanceof CachedString ? CLOSE_BRACES : CLOSE_BRACKET
 }
 
 /**
@@ -65,7 +73,7 @@ class SequenceToStream {
     // I get an index for the part in common
     // This way I know the common path and
     // a residual of the oldPath and newPath
-    const commonPathIndex = getCommonPathIndex(previousPath, path)
+    const commonPathIndex = previousPath.getCommonPathIndex(path)
 
     if (
       this.context === CONTEXT.NULL &&
@@ -78,7 +86,9 @@ class SequenceToStream {
         buffers.push(OPEN_BRACES)
       }
     }
-    if (!isPreviousPathInNewPath(previousPath, path)) {
+    // if the previous path is not entirely contained in the new path
+    // then, close the previous path
+    if (previousPath.length !== commonPathIndex) {
       if (this.context === CONTEXT.OBJECT) {
         buffers.push(CLOSE_BRACES)
       } else if (this.context === CONTEXT.ARRAY) {
@@ -86,8 +96,7 @@ class SequenceToStream {
       }
     }
     // close all opened path in reverse order
-    for (const [index, pathSegment] of fromEndToIndex(
-      previousPath,
+    for (const [index, pathSegment] of previousPath.fromEndToIndex(
       commonPathIndex,
     )) {
       if (index === commonPathIndex) {
@@ -97,7 +106,7 @@ class SequenceToStream {
       }
     }
     // open the new paths
-    for (const [index, pathSegment] of fromIndexToEnd(path, commonPathIndex)) {
+    for (const [index, pathSegment] of path.fromIndexToEnd(commonPathIndex)) {
       if (typeof pathSegment === "number") {
         if (index !== commonPathIndex) {
           buffers.push(OPEN_BRACKET)
@@ -142,7 +151,7 @@ class SequenceToStream {
       buffers.push(CLOSE_BRACKET)
     }
     // all opened path in reverse order
-    for (const [_index, pathSegment] of fromEndToIndex(this.currentPath, 0)) {
+    for (const [_index, pathSegment] of this.currentPath.fromEndToIndex(0)) {
       buffers.push(pathSegmentTerminator(pathSegment))
     }
     return mergeBuffers(buffers)
