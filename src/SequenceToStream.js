@@ -7,21 +7,7 @@ import { Path } from "./lib/path.js"
 import {
   CachedString,
   Value,
-  EmptyArray,
-  EmptyObj
 } from "./lib/value.js"
-
-/**
- * Enum for CONTEXT
- * @private
- * @readonly
- * @enum {string}
- */
-const CONTEXT = {
-  OBJECT: "OBJECT",
-  ARRAY: "ARRAY",
-  NULL: "NULL",
-}
 
 const encoder = new TextEncoder()
 
@@ -53,8 +39,6 @@ class SequenceToStream {
    */
   constructor() {
     this.currentPath = new Path()
-    /** @type CONTEXT */
-    this.context = CONTEXT.NULL
   }
 
   /**
@@ -76,7 +60,6 @@ class SequenceToStream {
     const commonPathIndex = previousPath.getCommonPathIndex(path)
 
     if (
-      this.context === CONTEXT.NULL &&
       previousPath.length === 0 &&
       path.length > 0
     ) {
@@ -84,15 +67,6 @@ class SequenceToStream {
         buffers.push(OPEN_BRACKET)
       } else {
         buffers.push(OPEN_BRACES)
-      }
-    }
-    // if the previous path is not entirely contained in the new path
-    // then, close the previous path
-    if (previousPath.length !== commonPathIndex) {
-      if (this.context === CONTEXT.OBJECT) {
-        buffers.push(CLOSE_BRACES)
-      } else if (this.context === CONTEXT.ARRAY) {
-        buffers.push(CLOSE_BRACKET)
       }
     }
     // close all opened path in reverse order
@@ -133,7 +107,6 @@ class SequenceToStream {
       }
     }
     const v = value.encoded
-    this.context = v instanceof EmptyObj ? CONTEXT.OBJECT : v instanceof EmptyArray ? CONTEXT.ARRAY : CONTEXT.NULL
     buffers.push(v)
     return mergeBuffers(buffers)
   }
@@ -145,11 +118,6 @@ class SequenceToStream {
   end() {
     /** @type {Array<Uint8Array>} */
     const buffers = []
-    if (this.context === CONTEXT.OBJECT) {
-      buffers.push(CLOSE_BRACES)
-    } else if (this.context === CONTEXT.ARRAY) {
-      buffers.push(CLOSE_BRACKET)
-    }
     // all opened path in reverse order
     for (const [_index, pathSegment] of this.currentPath.fromEndToIndex(0)) {
       buffers.push(pathSegmentTerminator(pathSegment))

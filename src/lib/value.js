@@ -16,6 +16,13 @@ export class Value {
   get encoded() {
     throw new Error("Not implemented")
   }
+
+  /** 
+   * @param {Value} _value
+   * @return {boolean} */
+  isEqual(_value) {
+    throw new Error("Not implemented")
+  }
 }
 
 export class True extends Value {
@@ -26,6 +33,13 @@ export class True extends Value {
   /** @return {Uint8Array} */
   get encoded() {
     return TRUE_BUFFER
+  }
+
+  /** 
+   * @param {Value} value
+   * @return {boolean} */
+  isEqual(value) {
+    return value instanceof True
   }
 }
 
@@ -38,6 +52,12 @@ export class False extends Value {
   get encoded() {
     return FALSE_BUFFER
   }  
+  /** 
+   * @param {Value} value
+   * @return {boolean} */
+  isEqual(value) {
+    return value instanceof False
+  }
 }
 
 export class Null extends Value {
@@ -48,29 +68,13 @@ export class Null extends Value {
   /** @return {Uint8Array} */
   get encoded() {
     return NULL_BUFFER
-  }  
-}
-
-export class EmptyObj extends Value {
-  /** @return {any} */
-  get decoded() {
-    return {}
   }
-  /** @return {Uint8Array} */
-  get encoded() {
-    return EMPTY_OBJECT_BUFFER
-  }  
-}
-
-export class EmptyArray extends Value {
-  /** @return {any} */
-  get decoded() {
-    return []
+  /** 
+   * @param {Value} value
+   * @return {boolean} */
+  isEqual(value) {
+    return value instanceof Null
   }
-  /** @return {Uint8Array} */
-  get encoded() {
-    return EMPTY_ARRAY_BUFFER
-  }  
 }
 
 export class CachedValue extends Value {
@@ -94,6 +98,18 @@ export class CachedValue extends Value {
   get encoded() {
     return this.data
   }
+
+  /** 
+   * @param {Value} otherValue
+   * @return {boolean} */
+  isEqual(otherValue) {
+    return (
+      this.encoded.byteLength === otherValue.encoded.byteLength &&
+      this.encoded.every(
+        (value, index) => value === otherValue.encoded[index],
+      )
+    )
+  }
 }
 
 export class CachedString extends CachedValue {}
@@ -103,8 +119,8 @@ export class CachedSubObject extends CachedValue {}
 export const falseValue = new False()
 export const trueValue = new True()
 export const nullValue = new Null()
-export const emptyObjValue = new EmptyObj()
-export const emptyArrayValue = new EmptyArray()
+export const emptyObjValue = new CachedSubObject(EMPTY_OBJECT_BUFFER)
+export const emptyArrayValue = new CachedSubObject(EMPTY_ARRAY_BUFFER)
 
 /**
  * 
@@ -122,11 +138,6 @@ export function getValueObjectFromJSONValue(value) {
     return falseValue
   }
   if (isArrayOrObject(value)) {
-    if (Array.isArray(value) && value.length === 0) {
-      return emptyArrayValue
-    } else if (Object.keys(value).length === 0) {
-      return emptyObjValue
-    }
     return new CachedSubObject(stringifyAndEncode(value))
   }
   if (typeof value === "string") {
@@ -137,3 +148,4 @@ export function getValueObjectFromJSONValue(value) {
   }
   throw new Error("Unsupported value type")
 }
+

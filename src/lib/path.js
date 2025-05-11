@@ -34,7 +34,7 @@ export class Path {
    * @param {JSONSegmentPathEncodedType} segment
    * @return {Path}
    */
-  withSegmentedAdded(segment) {
+  withSegmentAdded(segment) {
     return new Path([...this.array, segment])
   }
 
@@ -42,7 +42,7 @@ export class Path {
    * Return a new Path with the last segment removed
    * @return {Path}
    */
-  withSegmentedRemoved() {
+  withSegmentRemoved() {
     return new Path(this.array.slice(0, -1))
   }
 
@@ -159,6 +159,16 @@ export function areSegmentsEqual(segment1, segment2) {
   return false
 }
 
+/**
+ *
+ * @param {JSONSegmentPathType} pathSegment
+ * @returns {JSONSegmentPathEncodedType}
+ */
+export function toEncodedSegment(pathSegment) {
+  return typeof pathSegment === "number"
+    ? pathSegment
+    : new CachedString(stringifyAndEncode(pathSegment))
+}
 
 /**
  *
@@ -166,8 +176,6 @@ export function areSegmentsEqual(segment1, segment2) {
  * @returns {Path}
  */
 export function JSONPathToPath(path) {
-  const arrayEncoded = path.map((v) =>
-    typeof v === "number" ? v : new CachedString(stringifyAndEncode(v)),
-  )
+  const arrayEncoded = path.map(toEncodedSegment)
   return new Path(arrayEncoded)
 }

@@ -35,12 +35,12 @@ export class Path {
      * @param {JSONSegmentPathEncodedType} segment
      * @return {Path}
      */
-    withSegmentedAdded(segment: JSONSegmentPathEncodedType): Path;
+    withSegmentAdded(segment: JSONSegmentPathEncodedType): Path;
     /**
      * Return a new Path with the last segment removed
      * @return {Path}
      */
-    withSegmentedRemoved(): Path;
+    withSegmentRemoved(): Path;
     /**
      * @param {number} index
      * @return {?JSONSegmentPathEncodedType}

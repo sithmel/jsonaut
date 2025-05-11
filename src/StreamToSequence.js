@@ -82,7 +82,7 @@ class StreamToSequence {
    * @returns {void}
    */
   _pushCurrentPath(segment) {
-    this.currentPath = this.currentPath.withSegmentedAdded(segment)
+    this.currentPath = this.currentPath.withSegmentAdded(segment)
     this.maxDepthReached = this._isMaxDepthReached(this.currentPath)
   }
 
@@ -91,7 +91,7 @@ class StreamToSequence {
    * @returns {void}
    */
   _popCurrentPath() {
-    this.currentPath = this.currentPath.withSegmentedRemoved()
+    this.currentPath = this.currentPath.withSegmentRemoved()
     this.maxDepthReached = this._isMaxDepthReached(this.currentPath)
   }
 

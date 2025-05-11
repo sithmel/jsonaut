@@ -8,10 +8,6 @@ import {
   stringifyAndEncode,
 } from "../../src/lib/utils.js"
 
-import { JSONPathToPath } from "../../src/lib/path.js"
-import { CachedString, CachedNumber, False, EmptyArray, EmptyObj, Null } from "../../src/lib/value.js"
-
-
 describe("isArrayOrObject", () => {
   it("works with plain objects", () => assert.equal(isArrayOrObject({}), true))
   it("works with arrays", () => assert.equal(isArrayOrObject([]), true))
