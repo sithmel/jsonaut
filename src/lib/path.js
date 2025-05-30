@@ -149,12 +149,7 @@ export function areSegmentsEqual(segment1, segment2) {
     return true
   }
   if (segment1 instanceof CachedString && segment2 instanceof CachedString) {
-    return (
-      segment1.encoded.byteLength === segment2.encoded.byteLength &&
-      segment1.encoded.every(
-        (value, index) => value === segment2.encoded[index],
-      )
-    )
+    return segment1.isEqual(segment2)
   }
   return false
 }
