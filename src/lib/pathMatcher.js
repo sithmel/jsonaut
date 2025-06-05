@@ -1,6 +1,7 @@
 //@ts-check
 
 import { Path, areSegmentsEqual } from "./path.js"
+import { stringifyAndEncode } from "./utils.js"
 import { CachedString } from "./value.js"
 
 /**
@@ -92,7 +93,7 @@ export class BaseMatcher {
 
   /**
    * Check if this specific segment matches, without checking the children
-   * @param {?CachedString|number} _segment
+   * @param {?import("./path.js").JSONSegmentPathEncodedType} _segment
    * @param {boolean} _parentLastPossibleMatch
    * @return {boolean}
    */
@@ -171,7 +172,7 @@ export class BaseMatcher {
 export class AnyMatcher extends BaseMatcher {
   /**
    * Check if this specific segment matches, without checking the children
-   * @param {CachedString|number} _segment
+   * @param {import("../lib/path.js").JSONSegmentPathEncodedType} _segment
    * @param {boolean} _parentLastPossibleMatch
    * @return {boolean}
    */
@@ -203,53 +204,23 @@ export class SegmentMatcher extends BaseMatcher {
     super(matchers)
     this.hasMatchedForLastTime = false
     this._isLastPossibleMatch = true
-    const encoder = new TextEncoder()
 
     this.segmentMatch = segmentMatch
     this.segmentMatchEncoded =
       typeof segmentMatch === "string"
-        ? encoder.encode(JSON.stringify(segmentMatch))
+        ? new CachedString(stringifyAndEncode(segmentMatch))
         : segmentMatch
   }
   /**
    * Check if this specific segment matches, without checking the children
-   * @param {CachedString|number} segment
-   * @return {boolean}
-   */
-  _doesMatch(segment) {
-    if (
-      typeof this.segmentMatchEncoded === "number" &&
-      typeof segment === "number"
-    ) {
-      return segment === this.segmentMatchEncoded
-    }
-    if (typeof this.segmentMatch === "string" && typeof segment === "string") {
-      return segment === this.segmentMatch
-    }
-    if (
-      this.segmentMatchEncoded instanceof Uint8Array &&
-      segment instanceof CachedString
-    ) {
-      const buffer = segment.encoded
-      return (
-        this.segmentMatchEncoded.byteLength === buffer.byteLength &&
-        this.segmentMatchEncoded.every(
-          (value, index) => value === buffer[index],
-        )
-      )
-    }
-    return false
-  }
-  /**
-   * Check if this specific segment matches, without checking the children
-   * @param {CachedString|number} segment
+   * @param {import("../lib/path.js").JSONSegmentPathEncodedType} segment
    * @param {boolean} parentLastPossibleMatch
    * @return {boolean}
    */
   doesSegmentMatch(segment, parentLastPossibleMatch) {
     this._isLastPossibleMatch = parentLastPossibleMatch
 
-    const doesMatch = this._doesMatch(segment)
+    const doesMatch = areSegmentsEqual(this.segmentMatchEncoded, segment)
 
     if (!doesMatch && this.hasMatchedForLastTime) {
       this._isExhausted = true
@@ -302,7 +273,7 @@ export class SliceMatcher extends BaseMatcher {
   }
   /**
    * Check if this specific segment matches, without checking the children
-   * @param {CachedString|number} segment
+   * @param {import("../lib/path.js").JSONSegmentPathEncodedType} segment
    * @param {boolean} parentLastPossibleMatch
    * @return {boolean}
    */

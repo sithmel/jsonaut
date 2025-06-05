@@ -4,8 +4,6 @@ export default SequenceToStream;
  */
 declare class SequenceToStream {
     currentPath: Path;
-    /** @type CONTEXT */
-    context: CONTEXT;
     /**
      * add a new path value pair
      * @param {Path} path - an array of path segments
@@ -20,14 +18,5 @@ declare class SequenceToStream {
     end(): Uint8Array;
 }
 import { Path } from "./lib/path.js";
-/**
- * Enum for CONTEXT
- */
-type CONTEXT = string;
-declare namespace CONTEXT {
-    let OBJECT: string;
-    let ARRAY: string;
-    let NULL: string;
-}
 import { Value } from "./lib/value.js";
 //# sourceMappingURL=SequenceToStream.d.ts.map

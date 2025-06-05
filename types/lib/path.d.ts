@@ -7,6 +7,12 @@
 export function areSegmentsEqual(segment1: JSONSegmentPathEncodedType | null, segment2: JSONSegmentPathEncodedType | null): boolean;
 /**
  *
+ * @param {JSONSegmentPathType} pathSegment
+ * @returns {JSONSegmentPathEncodedType}
+ */
+export function toEncodedSegment(pathSegment: JSONSegmentPathType): JSONSegmentPathEncodedType;
+/**
+ *
  * @param {JSONPathType} path
  * @returns {Path}
  */

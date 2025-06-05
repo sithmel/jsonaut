@@ -5,9 +5,11 @@
 JSONaut allows to work with JSON as streams, without the need to load them in memory.
 It converts them into a sequence of path/value pairs (using iterables) and offers a lot of features to manipulate that sequence and returns it as object or as a new stream.
 
-It is minimal (only 1 small dependency) but work well with other libraries. It is designed for both server and client.
+It is minimal (only 1 small dependency) but works well with other libraries. It is designed for both server and client.
 
 ## Examples
+
+### Parsing a subset of a JSON
 In this example I filter a stream to build an object that contains only the data required. See the [benchmarks](#benchmarks).
 ```js
 import fs from "fs"
@@ -20,13 +22,16 @@ const obj = streamToIterable(readStream)
   .filter(() => )
   .toObject()
   .then((obj) => {
+    // once I read the data I need, I no longer need to finish consuming the stream
     readStream.destroy()
     // obj contains the first 2 invoices
     // including only the itemsSold and unitPrice
   })
 ```
 
-or if you prefer to write the stream directly:
+### Filtering a JSON stream
+
+If you prefer to write the stream directly:
 
 ```js
 import fs from "fs"
@@ -44,16 +49,84 @@ streamToIterable(readStream)
   })
 ```
 
+### Transform JSON stream
+
+```js
+import fs from "fs"
+import { streamToIterable } from "jsonaut"
+
+const readStream = fs.createReadStream(inputFilePath)
+const writeStream = fs.createWriteStream(outputFilePath);
+
+streamToIterable(readStream)
+  .includes(`'invoices'( * ( 'itemsSold' 'unitPrice'))`)
+  .flatMap(([path, value]) => {
+    
+  })
+  .toStream((data) => writeStream.write(data))
+  .then(() => {
+    writeStream.end()
+    readStream.destroy()
+  })
+```
+
 
 ### Rendering partial state
 
 Fetching a big JSON on the browser and render the data in the UI while being downloaded (no need to wait for the entire file to be downloaded).
+```js
+import { streamToIterable, SequenceToObject } from "jsonaut"
 
+// this will rebuild the object from a sequence
+const objectBuilder = new SequenceToObject()
+
+// fetch can be aborted
+const controller = new AbortController()
+const signal = controller.signal
+
+fetch(url, { signal })
+  .then(async (response) => {
+    // iter is an asyncIterable of iterables
+    const iter = streamToIterable(response.body)
+    for await (const iterables of iter) {
+      // this adds to the object the chunk of sequence I could read so far
+      for (const [path, value] of iterables) {
+        objectBuilder.add(path, value)
+      }
+      // I can now render the object containing the data I fetched so far
+      // "render" is left to you to implement
+      render(objectBuilder.getObject())
+      // I can decide to stop fetching and parsing the stream using abort
+      // "shouldStop" is left to you to implement
+      if (shouldStop()) {
+        controller.abort()
+        break
+      }
+    }
+  })
+```
 
 ### Easy Data manipulation
 
-Transforming a tree data structure (like a Javascript object) is not super convenient. With JSONaut you can simply iterate over the sequence and use familiar filter/map/reduce.
+With JSONaut you can simply iterate over the sequence and use familiar filter/map/reduce.
 
+```js
+import fs from "fs"
+import { streamToIterable } from "jsonaut"
+
+const readStream = fs.createReadStream('invoices.json')
+
+const obj = streamToIterable(readStream)
+  .includes(`'invoices'( 0..2( 'itemsSold' 'unitPrice'))`)
+  .filter(() => )
+  .toObject()
+  .then((obj) => {
+    // once I read the data I need, I no longer need to finish consuming the stream
+    readStream.destroy()
+    // obj contains the first 2 invoices
+    // including only the itemsSold and unitPrice
+  })
+```
 
 
 

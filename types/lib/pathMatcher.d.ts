@@ -48,11 +48,11 @@ export class BaseMatcher {
     _isLastPossibleMatch: boolean;
     /**
      * Check if this specific segment matches, without checking the children
-     * @param {?CachedString|number} _segment
+     * @param {?import("./path.js").JSONSegmentPathEncodedType} _segment
      * @param {boolean} _parentLastPossibleMatch
      * @return {boolean}
      */
-    doesSegmentMatch(_segment: (CachedString | number) | null, _parentLastPossibleMatch: boolean): boolean;
+    doesSegmentMatch(_segment: import("./path.js").JSONSegmentPathEncodedType | null, _parentLastPossibleMatch: boolean): boolean;
     /**
      * Check for match
      * @param {Path} path
@@ -84,11 +84,11 @@ export class BaseMatcher {
 export class AnyMatcher extends BaseMatcher {
     /**
      * Check if this specific segment matches, without checking the children
-     * @param {CachedString|number} _segment
+     * @param {import("../lib/path.js").JSONSegmentPathEncodedType} _segment
      * @param {boolean} _parentLastPossibleMatch
      * @return {boolean}
      */
-    doesSegmentMatch(_segment: CachedString | number, _parentLastPossibleMatch: boolean): boolean;
+    doesSegmentMatch(_segment: import("../lib/path.js").JSONSegmentPathEncodedType, _parentLastPossibleMatch: boolean): boolean;
 }
 /**
  * @private
@@ -102,20 +102,14 @@ export class SegmentMatcher extends BaseMatcher {
     constructor(segmentMatch: import("../lib/path.js").JSONSegmentPathType, matchers?: Array<BaseMatcher>);
     hasMatchedForLastTime: boolean;
     segmentMatch: import("./path.js").JSONSegmentPathType;
-    segmentMatchEncoded: number | Uint8Array<ArrayBufferLike>;
+    segmentMatchEncoded: number | CachedString;
     /**
      * Check if this specific segment matches, without checking the children
-     * @param {CachedString|number} segment
-     * @return {boolean}
-     */
-    _doesMatch(segment: CachedString | number): boolean;
-    /**
-     * Check if this specific segment matches, without checking the children
-     * @param {CachedString|number} segment
+     * @param {import("../lib/path.js").JSONSegmentPathEncodedType} segment
      * @param {boolean} parentLastPossibleMatch
      * @return {boolean}
      */
-    doesSegmentMatch(segment: CachedString | number, parentLastPossibleMatch: boolean): boolean;
+    doesSegmentMatch(segment: import("../lib/path.js").JSONSegmentPathEncodedType, parentLastPossibleMatch: boolean): boolean;
 }
 /**
  * @private
@@ -135,11 +129,11 @@ export class SliceMatcher extends BaseMatcher {
     max: number;
     /**
      * Check if this specific segment matches, without checking the children
-     * @param {CachedString|number} segment
+     * @param {import("../lib/path.js").JSONSegmentPathEncodedType} segment
      * @param {boolean} parentLastPossibleMatch
      * @return {boolean}
      */
-    doesSegmentMatch(segment: CachedString | number, parentLastPossibleMatch: boolean): boolean;
+    doesSegmentMatch(segment: import("../lib/path.js").JSONSegmentPathEncodedType, parentLastPossibleMatch: boolean): boolean;
 }
 import { Path } from "./path.js";
 import { CachedString } from "./value.js";

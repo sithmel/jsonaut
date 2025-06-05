@@ -9,16 +9,16 @@ export class Value {
     get decoded(): any;
     /** @return {Uint8Array} */
     get encoded(): Uint8Array;
+    /**
+     * @param {Value} _value
+     * @return {boolean} */
+    isEqual(_value: Value): boolean;
 }
 export class True extends Value {
 }
 export class False extends Value {
 }
 export class Null extends Value {
-}
-export class EmptyObj extends Value {
-}
-export class EmptyArray extends Value {
 }
 export class CachedValue extends Value {
     /** @param {Uint8Array} data */
@@ -36,6 +36,6 @@ export class CachedSubObject extends CachedValue {
 export const falseValue: False;
 export const trueValue: True;
 export const nullValue: Null;
-export const emptyObjValue: EmptyObj;
-export const emptyArrayValue: EmptyArray;
+export const emptyObjValue: CachedSubObject;
+export const emptyArrayValue: CachedSubObject;
 //# sourceMappingURL=value.d.ts.map
