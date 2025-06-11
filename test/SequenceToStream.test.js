@@ -4,8 +4,8 @@ import { describe, it } from "node:test"
 
 import SequenceToStream from "../src/SequenceToStream.js"
 import ObjectToSequence from "../src/ObjectToSequence.js"
-import { JSONPathToPath } from "../src/lib/path.js"
-import { getValueObjectFromJSONValue } from "../src/lib/value.js"
+import { toPathObject } from "../src/lib/path.js"
+import { toValueObject } from "../src/lib/value.js"
 
 async function testObj(obj) {
   let str = ""
@@ -28,7 +28,7 @@ async function testSequence(sequence, obj) {
   const builder = new SequenceToStream()
 
   for (const [path, value] of sequence) {
-    const data = builder.add(JSONPathToPath(path), getValueObjectFromJSONValue(value))
+    const data = builder.add(toPathObject(path), toValueObject(value))
     str += decoder.decode(data)
   }
   const data = builder.end()

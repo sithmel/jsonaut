@@ -11,6 +11,7 @@ It is minimal (only 1 small dependency) but works well with other libraries. It 
 
 ### Parsing a subset of a JSON
 In this example I filter a stream to build an object that contains only the data required. See the [benchmarks](#benchmarks).
+
 ```js
 import fs from "fs"
 import { streamToIterable } from "jsonaut"
@@ -18,15 +19,23 @@ import { streamToIterable } from "jsonaut"
 const readStream = fs.createReadStream('invoices.json')
 
 const obj = streamToIterable(readStream)
-  .includes(`'invoices'( 0..2( 'itemsSold' 'unitPrice'))`)
-  .filter(() => )
+  .includes(`'invoices'( 0..2( 'productName' 'itemsSold' 'unitPrice'))`)
   .toObject()
   .then((obj) => {
     // once I read the data I need, I no longer need to finish consuming the stream
     readStream.destroy()
+    console.log(obj)
     // obj contains the first 2 invoices
     // including only the itemsSold and unitPrice
   })
+```
+This prints:
+```js
+{[
+  {productName: 'Bright copper kettles', itemSold: 12, unitPrice: 11.4},
+  {productName: 'Warm woolen mittens', itemSold: 13, unitPrice: 1.44},
+  {productName: 'Brown paper packages', itemSold: 23, unitPrice: 2.3}
+]}
 ```
 
 ### Filtering a JSON stream
@@ -41,13 +50,17 @@ const readStream = fs.createReadStream(inputFilePath)
 const writeStream = fs.createWriteStream(outputFilePath);
 
 streamToIterable(readStream)
-  .includes(`'invoices'( * ( 'itemsSold' 'unitPrice'))`)
-  .toStream((data) => writeStream.write(data))
+  .includes(`'invoices'( 0..2( 'productName' 'itemsSold' 'unitPrice'))`)
+  .toIterableBuffer()
+  .forEach((data) => {
+    writeStream.write(data)
+  })
   .then(() => {
     writeStream.end()
     readStream.destroy()
   })
 ```
+This is equivalent to the previous example, but it writes the output in a stream instead.
 
 ### Transform JSON stream
 
@@ -58,18 +71,23 @@ import { streamToIterable } from "jsonaut"
 const readStream = fs.createReadStream(inputFilePath)
 const writeStream = fs.createWriteStream(outputFilePath);
 
-streamToIterable(readStream)
-  .includes(`'invoices'( * ( 'itemsSold' 'unitPrice'))`)
-  .flatMap(([path, value]) => {
-    
+streamToIterable(readStream, { maxDepth: 2 })
+  .map(([pathObj, valueObj]) => {
+    const value = valueObj.decoded
+    return [pathObj, toValueObject({...value, total: value.itemsSold * value.unitPrice})]
   })
-  .toStream((data) => writeStream.write(data))
+  .filter(([_pathObj, valueObj]) => {
+    return valueObj.decoded.total >= 1000
+  })
+  .toIterableBuffer()
+  .forEach((data) => {
+    writeStream.write(data)
+  })
   .then(() => {
     writeStream.end()
     readStream.destroy()
   })
 ```
-
 
 ### Rendering partial state
 
@@ -86,7 +104,7 @@ const signal = controller.signal
 
 fetch(url, { signal })
   .then(async (response) => {
-    // iter is an asyncIterable of iterables
+    // iter is an asyncIterable of iterables (see BatchIterable)
     const iter = streamToIterable(response.body)
     for await (const iterables of iter) {
       // this adds to the object the chunk of sequence I could read so far
@@ -106,31 +124,9 @@ fetch(url, { signal })
   })
 ```
 
-### Easy Data manipulation
+# Main concepts
 
-With JSONaut you can simply iterate over the sequence and use familiar filter/map/reduce.
-
-```js
-import fs from "fs"
-import { streamToIterable } from "jsonaut"
-
-const readStream = fs.createReadStream('invoices.json')
-
-const obj = streamToIterable(readStream)
-  .includes(`'invoices'( 0..2( 'itemsSold' 'unitPrice'))`)
-  .filter(() => )
-  .toObject()
-  .then((obj) => {
-    // once I read the data I need, I no longer need to finish consuming the stream
-    readStream.destroy()
-    // obj contains the first 2 invoices
-    // including only the itemsSold and unitPrice
-  })
-```
-
-
-
-## The idea
+## Path, Value
 
 The main idea behind this library is that a JSON can be converted into a sequence of "path, value" pairs and can be reconstructed from this sequence.
 This allows to filter and transform a big JSON as a stream, without having to load it in memory. It also make it easier to work with JSON and JS objects using filter/map/reduce.
@@ -143,13 +139,173 @@ An example of a sequence is:
 | ["keywords", 0], "json"    | {"name": "JSONaut", keywords: ["json"]}           |
 | ["keywords", 1], "stream"  | {"name": "JSONaut", keywords: ["json", "stream"]} |
 
-## About the ordering
+### About the ordering
 
 Streaming out JSON requires the "path, value" pairs to be emitted in **depth first** order of paths otherwise the resulting JSON will be malformed. This is the normal order in which data are stored in JSON.
 Alternatively, it also works if the paths are sorted comparing object keys in lexicographic order and array indexes from the smallest to the biggest. In this case, the structure will be respected, but not necessarily the order the keys presents in the original JSON (ES2015 standard introduced the concept of key ordering, but it is not respected here).
 
+## BatchIterable
 
-# API
+A stream can be parsed using [asyncIterables](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/AsyncIterator) and every chunk of the stream parsed yields [iterables](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Iterators_and_generators). For this reason, the path value sequence can be typed as `AsyncIterable<Iterable<[Path, Value]>>`.
+I call `AsyncIterable<Iterable<T>>` a `BatchIterable<T>` for short.
+Javascript makes unwieldy to work with a type defined like that. It basically requires to a nested for loop like this one:
+```js
+for await (const iterables of asyncIter) {
+  for (const [path, value] of iterables) {
+    ...
+  }
+}
+```
+Treating synchronous iterables like async ones would have only penalised the performance.
+
+For this reason I have abstracted this type in a class that offers some standard way to manipulate the sequence.
+You can find the [documentation here](https://github.com/sithmel/batch-iterable).
+
+## Path and Value encoding/decoding
+
+### JSON Values
+While building this library I noticed that most of the computation time goes into decoding arrayBuffers to a Javascript strings. And this is a necessary passage to decode strings and numbers. To keep the performance at a reasonable level, the library avoids parsing the string unless is strictly necessary.
+This can be done using a set of classes that are storing the data as a buffer and they are decoding the data (and caching it) on demand.
+
+Here ia an example:
+```js
+import {False, CachedString} from 'jsonaut'
+
+const falseValue = new False()
+const helloValue = new CachedString(new Uint8Array([34, 104, 101, 108, 108, 111, 34]))
+console.log(falseValue.decoded) // false
+console.log(falseValue.encoded) // false as Uint8Array encoded string
+
+console.log(helloValue.decoded) // "hello"
+console.log(helloValue.encoded) // Uint8Array(7)[34, 104, 101, 108, 108, 111, 34]
+```
+These object have a method to check for equality without decoding the string:
+```js
+falseValue.isEqual(helloValue) // false
+helloValue.isEqual(helloValue) // true
+```
+The value objects are:
+- True
+- False
+- Null
+- CachedString
+- CachedNumber
+- CachedSubObject
+
+It is available a function that converts a valid Javascript value into one of these Objects:
+```js
+import {toValueObject} from 'jsonaut'
+
+const helloValue = toValueObject('hello')
+```
+**Note**: The buffer stored the JSON representation of the Javascript value. So in the case of strings it includes double quotes and escapes.
+
+### JSON Path
+Paths contains both string and numbers. Strings are also encoded. Path are converted in encoded format using `toPathObject`
+```js
+import {toPathObject} from 'jsonaut'
+
+const path = toPathObject(['hello', 'world', 0])
+console.log(path.encoded) // [Uint8Array, UintArray, 0]
+
+console.log(path.decoded) // ['hello', 'world', 0]
+```
+Path objects contains some extra utility functions:
+```js
+path.isEqual(otherPath) // true if the 2 paths are identical 
+const index = path.getCommonPathIndex(otherPath)
+// returns the index of where the path segments are different.
+// For example:
+// index === 0  paths are entirely different
+// index === path.length path is contained into otherPath
+// index === otherPath.length otherPath is contained into path
+```
+### How to use it
+```js
+streamToIterable(readStream)
+  .map(([pathObj, valueObj]) => {
+    const value = valueObj.decoded
+    return [pathObj, toValueObject({...value, total: value.itemsSold * value.unitPrice})]
+  })
+  .filter(([_pathObj, valueObj]) => valueObj.decoded.total >= 1000)
+```
+
+# Higher level functions
+
+## streamToIterable
+This function takes as input a asyncIterable of buffers. This is the return value of Node.js and Web Streams:
+```js
+const readStream = fs.createReadStream('invoices.json')
+streamToIterable(readStream)
+```
+or
+```js
+fetch(url)
+  .then((response) => {
+    streamToIterable(response.body)
+  })
+```
+The object returned is a batchIterable that it can be consumed like this:
+```js
+for await (const iterables of streamToIterable(readStream)) {
+  for (const [path, value] of iterables) {
+    console.log(path.decoded, value.decoded)
+  }
+}
+```
+It also supports all the methods listed [here](https://github.com/sithmel/batch-iterable). So it can also be consumed like this: 
+```js
+streamToIterable(readStream)
+  .forEach(([path, value]) => console.log(path.decoded, value.decoded))
+```
+Let's assume we are working with the following JSON:
+```json
+{
+  "invoices": [
+    {"productName": "piano catapult", "itemsSold": 40, "unitPrice": 120},
+    {"productName": "fake tunnel", "itemsSold": 12, "unitPrice": 220},
+    ...
+  ]
+}
+```
+The previous examples will return:
+```js
+["invoices", 0, productName] "piano catapult"
+["invoices", 0, itemsSold] 40
+["invoices", 0, unitPrice] 120
+["invoices", 1, productName] "fake tunnel"
+["invoices", 1, itemsSold] 12
+["invoices", 1, unitPrice] 220
+...
+```
+
+### maxDepth and isMaxDepthReached
+
+In some cases you would like to group more values together. You can do this limiting the depth of the parsing:
+```js
+streamToIterable(readStream, { maxDepth: 2 })
+  .forEach(([path, value]) => console.log(path.decoded, value.decoded))
+```
+Which it returns:
+```js
+["invoices", 0] {"productName": "piano catapult", "itemsSold": 40, "unitPrice": 120}
+["invoices", 1] {"productName": "fake tunnel", "itemsSold": 12, "unitPrice": 220}
+...
+```
+Rather than using a fixed maxDepth you can decide whether to limit the parsing based on the current path:
+```js
+import {toPathObject} from 'jsonaut'
+
+const invoicesPath = toPathObject(['invoices'])
+
+streamToIterable(readStream, { isMaxDepthReached: (path) => path.getCommonPathIndex(invoicesPath) === 1 && path.length === 2 })
+  .forEach(([path, value]) => console.log(path.decoded, value.decoded))
+```
+
+Note: Limiting the depth of parsing is also a way to increase the performance.
+
+
+# Lower level API
 
 ## StreamToSequence
 

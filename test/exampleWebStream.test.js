@@ -2,8 +2,7 @@
 import assert from "assert"
 import { describe, it, before } from "node:test"
 
-import {streamToIterable} from "../src/index.js"
-
+import { streamToIterable } from "../src/index.js"
 
 /**
  * @param {{text:string}} output
@@ -44,8 +43,8 @@ async function filterJSONStream(readable, writable, includes, controller) {
     .includes(includes)
     .toIterableBuffer()
     .forEach((data) => {
-     writer.write(data)
-  })
+      writer.write(data)
+    })
   controller.abort()
 }
 

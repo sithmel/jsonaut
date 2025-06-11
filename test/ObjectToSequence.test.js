@@ -34,17 +34,16 @@ describe("ObjParser", () => {
     let parserIter
     beforeEach(() => {
       const parser = new ObjectToSequence({ maxDepth: 1 })
-      parserIter = (obj) => Array.from(parser.iter(obj)).map(([path, value]) => [
-        path.decoded,
-        value.decoded,
-      ])
+      parserIter = (obj) =>
+        Array.from(parser.iter(obj)).map(([path, value]) => [
+          path.decoded,
+          value.decoded,
+        ])
     })
 
     it("works with object nested into object (1)", () => {
       const seq = parserIter({ test1: { test2: 1 } })
-      assert.deepEqual(seq, [
-        [["test1"], { test2: 1 }],
-      ])
+      assert.deepEqual(seq, [[["test1"], { test2: 1 }]])
     })
 
     it("works with object nested into object (2)", () => {

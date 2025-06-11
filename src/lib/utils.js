@@ -60,10 +60,10 @@ export function mergeBuffers(buffers) {
     offsets.push(totalSize)
     totalSize += buffer.length
   }
-  const merged = new Uint8Array(totalSize);
+  const merged = new Uint8Array(totalSize)
   let i = 0
   for (const buffer of buffers) {
-    merged.set(buffer, offsets[i]);
+    merged.set(buffer, offsets[i])
     i++
   }
   return merged

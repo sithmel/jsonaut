@@ -4,7 +4,7 @@ import { describe, it } from "node:test"
 
 import fs from "fs"
 import path from "path"
-import {streamToIterable} from "../src/index.js"
+import { streamToIterable } from "../src/index.js"
 
 /**
  * @param {string} filename
@@ -12,9 +12,7 @@ import {streamToIterable} from "../src/index.js"
  */
 async function filterFile(filename, includes) {
   const readStream = fs.createReadStream(path.join("test", "samples", filename))
-  const obj = await streamToIterable(readStream)
-    .includes(includes)
-    .toObject();
+  const obj = await streamToIterable(readStream).includes(includes).toObject()
 
   readStream.destroy()
   return obj

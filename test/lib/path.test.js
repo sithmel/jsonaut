@@ -1,7 +1,7 @@
 //@ts-check
 import assert from "assert"
 import { describe, it, beforeEach } from "node:test"
-import { Path, JSONPathToPath, areSegmentsEqual } from "../../src/lib/path.js"
+import { Path, toPathObject, areSegmentsEqual } from "../../src/lib/path.js"
 import { CachedString } from "../../src/lib/value.js"
 
 /**
@@ -51,7 +51,7 @@ describe("Path", () => {
 describe("Path fromEndToIndex", () => {
   it("index 0", () =>
     assert.deepEqual(
-      segmentIterableToArray(JSONPathToPath(["a", "b", "c"]).fromEndToIndex(0)),
+      segmentIterableToArray(toPathObject(["a", "b", "c"]).fromEndToIndex(0)),
       [
         [2, "c"],
         [1, "b"],
@@ -60,7 +60,7 @@ describe("Path fromEndToIndex", () => {
     ))
   it("index 1", () =>
     assert.deepEqual(
-      segmentIterableToArray(JSONPathToPath(["a", "b", "c"]).fromEndToIndex(1)),
+      segmentIterableToArray(toPathObject(["a", "b", "c"]).fromEndToIndex(1)),
       [
         [2, "c"],
         [1, "b"],
@@ -68,12 +68,12 @@ describe("Path fromEndToIndex", () => {
     ))
   it("index 2", () =>
     assert.deepEqual(
-      segmentIterableToArray(JSONPathToPath(["a", "b", "c"]).fromEndToIndex(2)),
+      segmentIterableToArray(toPathObject(["a", "b", "c"]).fromEndToIndex(2)),
       [[2, "c"]],
     ))
   it("index 3", () =>
     assert.deepEqual(
-      segmentIterableToArray(JSONPathToPath(["a", "b", "c"]).fromEndToIndex(3)),
+      segmentIterableToArray(toPathObject(["a", "b", "c"]).fromEndToIndex(3)),
       [],
     ))
 })
@@ -81,7 +81,7 @@ describe("Path fromEndToIndex", () => {
 describe("Path fromIndexToEnd", () => {
   it("index 0", () =>
     assert.deepEqual(
-      segmentIterableToArray(JSONPathToPath(["a", "b", "c"]).fromIndexToEnd(0)),
+      segmentIterableToArray(toPathObject(["a", "b", "c"]).fromIndexToEnd(0)),
       [
         [0, "a"],
         [1, "b"],
@@ -90,7 +90,7 @@ describe("Path fromIndexToEnd", () => {
     ))
   it("index 1", () =>
     assert.deepEqual(
-      segmentIterableToArray(JSONPathToPath(["a", "b", "c"]).fromIndexToEnd(1)),
+      segmentIterableToArray(toPathObject(["a", "b", "c"]).fromIndexToEnd(1)),
       [
         [1, "b"],
         [2, "c"],
@@ -98,57 +98,57 @@ describe("Path fromIndexToEnd", () => {
     ))
   it("index 3", () =>
     assert.deepEqual(
-      segmentIterableToArray(JSONPathToPath(["a", "b", "c"]).fromIndexToEnd(3)),
+      segmentIterableToArray(toPathObject(["a", "b", "c"]).fromIndexToEnd(3)),
       [],
     ))
 })
 describe("Path getCommonPathIndex", () => {
   it("works with empty paths", () =>
-    assert.equal(JSONPathToPath([]).getCommonPathIndex(JSONPathToPath([])), 0))
+    assert.equal(toPathObject([]).getCommonPathIndex(toPathObject([])), 0))
   it("works with same paths", () =>
     assert.equal(
-      JSONPathToPath(["a", "b", "c"]).getCommonPathIndex(
-        JSONPathToPath(["a", "b", "c"]),
+      toPathObject(["a", "b", "c"]).getCommonPathIndex(
+        toPathObject(["a", "b", "c"]),
       ),
       3,
     ))
   it("works with common paths (1)", () =>
     assert.equal(
-      JSONPathToPath(["a", "b"]).getCommonPathIndex(
-        JSONPathToPath(["a", "b", "c"]),
+      toPathObject(["a", "b"]).getCommonPathIndex(
+        toPathObject(["a", "b", "c"]),
       ),
       2,
     ))
   it("works with common paths (2)", () =>
     assert.equal(
-      JSONPathToPath([]).getCommonPathIndex(JSONPathToPath(["a", "b", "c"])),
+      toPathObject([]).getCommonPathIndex(toPathObject(["a", "b", "c"])),
       0,
     ))
   it("works with common paths (3)", () =>
     assert.equal(
-      JSONPathToPath(["a", "b", "c"]).getCommonPathIndex(
-        JSONPathToPath(["a", "b"]),
+      toPathObject(["a", "b", "c"]).getCommonPathIndex(
+        toPathObject(["a", "b"]),
       ),
       2,
     ))
   it("works with different paths (1)", () =>
     assert.equal(
-      JSONPathToPath(["a", "b", "c"]).getCommonPathIndex(
-        JSONPathToPath(["x", "y"]),
+      toPathObject(["a", "b", "c"]).getCommonPathIndex(
+        toPathObject(["x", "y"]),
       ),
       0,
     ))
   it("works with different paths (2)", () =>
     assert.equal(
-      JSONPathToPath(["a", "b"]).getCommonPathIndex(
-        JSONPathToPath(["x", "y", "z"]),
+      toPathObject(["a", "b"]).getCommonPathIndex(
+        toPathObject(["x", "y", "z"]),
       ),
       0,
     ))
   it("works with different paths (3)", () =>
     assert.equal(
-      JSONPathToPath(["x", "a", "b"]).getCommonPathIndex(
-        JSONPathToPath(["x", "y", "z"]),
+      toPathObject(["x", "a", "b"]).getCommonPathIndex(
+        toPathObject(["x", "y", "z"]),
       ),
       1,
     ))

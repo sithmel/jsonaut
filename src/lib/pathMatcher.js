@@ -32,7 +32,7 @@ export class MatcherContainer {
    * @return {boolean}
    */
   doesMatch(path) {
-    if (this.matchers.length == 0) {
+    if (this.matchers.length === 0) {
       return true
     }
     for (const matcher of this.matchers) {
@@ -115,7 +115,7 @@ export class BaseMatcher {
     ) {
       return false
     }
-    if (this.matchers.length == 0) {
+    if (this.matchers.length === 0) {
       return true
     }
     const newPath = path.rest()

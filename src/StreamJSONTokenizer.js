@@ -304,11 +304,19 @@ class StreamJSONTokenizer {
             }
           } else if (byte === CHAR_CODE.COLON) {
             if (this.currentDepthInSubObject === 0) {
-              this.maxDepthReached = yield [TOKEN.COLON, currentBufferIndex, currentBufferIndex + 1]
+              this.maxDepthReached = yield [
+                TOKEN.COLON,
+                currentBufferIndex,
+                currentBufferIndex + 1,
+              ]
             }
           } else if (byte === CHAR_CODE.COMMA) {
             if (this.currentDepthInSubObject === 0) {
-              this.maxDepthReached = yield [TOKEN.COMMA, currentBufferIndex, currentBufferIndex + 1]
+              this.maxDepthReached = yield [
+                TOKEN.COMMA,
+                currentBufferIndex,
+                currentBufferIndex + 1,
+              ]
             }
           } else {
             throw new ParsingError(

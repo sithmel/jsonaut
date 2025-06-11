@@ -281,12 +281,14 @@ describe("StreamToSequence", () => {
     })
 
     it("works in a complex case", () => {
-      const seq = parserIter('[{"id": 1, "grouped": [1, 2, 3]}, {"id": 2, "grouped": [4, 5, 6]}]')
+      const seq = parserIter(
+        '[{"id": 1, "grouped": [1, 2, 3]}, {"id": 2, "grouped": [4, 5, 6]}]',
+      )
       assert.deepEqual(seq, [
-        [[0, 'id'], 1, 8, 9],
-        [[0, 'grouped'], [1, 2, 3], 22, 31],
-        [[1, 'id'], 2, 41, 42],
-        [[1, 'grouped'], [4, 5, 6], 55, 64],
+        [[0, "id"], 1, 8, 9],
+        [[0, "grouped"], [1, 2, 3], 22, 31],
+        [[1, "id"], 2, 41, 42],
+        [[1, "grouped"], [4, 5, 6], 55, 64],
       ])
       assert.equal(parser.isFinished(), true)
     })

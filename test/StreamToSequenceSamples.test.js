@@ -7,7 +7,6 @@ import path from "path"
 import SequenceToObject from "../src/SequenceToObject.js"
 import StreamToSequence from "../src/StreamToSequence.js"
 
-
 describe("StreamToSequence sample files", () => {
   let parser
   beforeEach(() => {

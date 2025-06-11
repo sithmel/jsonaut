@@ -135,6 +135,15 @@ export class Path {
     }
     return length
   }
+
+  /**
+   * The paths are equal
+   * @param {Path} newPath
+   * @returns {boolean}
+   */
+  isEqual(newPath) {
+    return this.length === newPath.length && this.getCommonPathIndex(newPath) === this.length
+  }
 }
 
 /**
@@ -170,7 +179,7 @@ export function toEncodedSegment(pathSegment) {
  * @param {JSONPathType} path
  * @returns {Path}
  */
-export function JSONPathToPath(path) {
+export function toPathObject(path) {
   const arrayEncoded = path.map(toEncodedSegment)
   return new Path(arrayEncoded)
 }

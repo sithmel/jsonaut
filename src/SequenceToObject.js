@@ -75,7 +75,6 @@ class SequenceToObject {
     let currentObject = this.object
 
     for (let i = 0; i < path.length - 1; i++) {
-
       const currentPathSegment = this._calculateRealIndex(
         path.get(i),
         i < commonPathIndex,

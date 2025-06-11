@@ -1,13 +1,8 @@
 //@ts-check
-import {
-  mergeBuffers,
-} from "./lib/utils.js"
+import { mergeBuffers } from "./lib/utils.js"
 
 import { Path } from "./lib/path.js"
-import {
-  CachedString,
-  Value,
-} from "./lib/value.js"
+import { CachedString, Value } from "./lib/value.js"
 
 const encoder = new TextEncoder()
 
@@ -59,10 +54,7 @@ class SequenceToStream {
     // a residual of the oldPath and newPath
     const commonPathIndex = previousPath.getCommonPathIndex(path)
 
-    if (
-      previousPath.length === 0 &&
-      path.length > 0
-    ) {
+    if (previousPath.length === 0 && path.length > 0) {
       if (typeof path.get(0) === "number") {
         buffers.push(OPEN_BRACKET)
       } else {
@@ -87,7 +79,9 @@ class SequenceToStream {
         }
 
         const previousIndex =
-          index === commonPathIndex ? (previousPath.get(commonPathIndex) ?? -1) : -1
+          index === commonPathIndex
+            ? (previousPath.get(commonPathIndex) ?? -1)
+            : -1
         if (previousIndex instanceof CachedString) {
           throw new Error(
             `Mixing up array index and object keys is not allowed: before ${previousIndex} then ${pathSegment} in [${path}]`,

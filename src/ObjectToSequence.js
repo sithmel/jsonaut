@@ -1,6 +1,11 @@
 //@ts-check
 import { isArrayOrObject } from "./lib/utils.js"
-import { getValueObjectFromJSONValue, emptyObjValue, emptyArrayValue, Value } from "./lib/value.js"
+import {
+  toValueObject,
+  emptyObjValue,
+  emptyArrayValue,
+  Value,
+} from "./lib/value.js"
 import { toEncodedSegment, Path } from "./lib/path.js"
 
 /**
@@ -17,11 +22,9 @@ class ObjectToSequence {
     const { maxDepth = null, isMaxDepthReached = null } = options
 
     if (maxDepth != null && isMaxDepthReached != null) {
-      throw new Error(
-        "You can only set one of maxDepth or isMaxDepthReached",
-      )
+      throw new Error("You can only set one of maxDepth or isMaxDepthReached")
     }
-    if (maxDepth != null){
+    if (maxDepth != null) {
       /** @type {(arg0: Path) => boolean} */
       this._isMaxDepthReached = (path) => path.length >= maxDepth
     } else if (isMaxDepthReached != null) {
@@ -52,10 +55,13 @@ class ObjectToSequence {
         pathSegmentsAndValues = Object.entries(obj)
       }
       for (const [pathSegment, value] of pathSegmentsAndValues) {
-        yield* this.iter(value, currentPath.withSegmentAdded(toEncodedSegment(pathSegment)))
+        yield* this.iter(
+          value,
+          currentPath.withSegmentAdded(toEncodedSegment(pathSegment)),
+        )
       }
     } else {
-      yield [currentPath, getValueObjectFromJSONValue(obj)]
+      yield [currentPath, toValueObject(obj)]
     }
   }
 }

@@ -46,14 +46,16 @@ class StreamToSequence {
    * @param {import("./lib/path.js").JSONPathType} [options.startingPath] - The parser will consider this path as it is initial (useful to resume)
    */
   constructor(options = {}) {
-    const { maxDepth = null, isMaxDepthReached = null, startingPath = [] } = options
+    const {
+      maxDepth = null,
+      isMaxDepthReached = null,
+      startingPath = [],
+    } = options
 
     if (maxDepth != null && isMaxDepthReached != null) {
-      throw new Error(
-        "You can only set one of maxDepth or isMaxDepthReached",
-      )
+      throw new Error("You can only set one of maxDepth or isMaxDepthReached")
     }
-    if (maxDepth != null){
+    if (maxDepth != null) {
       /** @type {(arg0: Path) => boolean} */
       this._isMaxDepthReached = (path) => path.length >= maxDepth
     } else if (isMaxDepthReached != null) {

@@ -6,13 +6,15 @@ import perform from "./utils/index.js"
 
 async function createIndex(JSONPath, indexPath) {
   const readStream = fs.createReadStream(JSONPath)
-  const indexObj = await streamToIterable(readStream, { maxDepth: 1 })
-    .reduce((builder, [path, _value, start, end]) => {
+  const indexObj = await streamToIterable(readStream, { maxDepth: 1 }).reduce(
+    (builder, [path, _value, start, end]) => {
       if (path.length === 1) {
         builder.add(path.decoded, [start, end])
       }
       return builder
-    }, new SequenceToObject({ compactArrays: true }))
+    },
+    new SequenceToObject({ compactArrays: true }),
+  )
   readStream.destroy()
   fs.writeFileSync(indexPath, JSON.stringify(indexObj.object))
 }

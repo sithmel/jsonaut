@@ -15,8 +15,8 @@ function decodePathAndValue([path, value, start, end]) {
 }
 
 /**
- * 
- * @param {Array<string>} array 
+ *
+ * @param {Array<string>} array
  * @returns {Iterable<Uint8Array>}
  */
 function arrayOfStringsToStream(array) {
@@ -27,18 +27,22 @@ function arrayOfStringsToStream(array) {
 describe("streamToIterable", () => {
   it("works", async () => {
     const streamLike = arrayOfStringsToStream(['{"test1":{"te', 'st2":1}}'])
-    const array = await streamToIterable(streamLike).includes("'test1'('test2')").toArray()
+    const array = await streamToIterable(streamLike)
+      .includes("'test1'('test2')")
+      .toArray()
     const seq = array.map(decodePathAndValue)
-  
+
     assert.deepEqual(seq, [[["test1", "test2"], 1, 18, 19]])
   })
 })
 
 describe("objectToIterable", () => {
   it("works", async () => {
-    const array = await objectToIterable({"test1":{"test2":1}}).includes("'test1'('test2')").toArray()
+    const array = await objectToIterable({ test1: { test2: 1 } })
+      .includes("'test1'('test2')")
+      .toArray()
     const seq = array.map(decodePathAndValue)
-  
+
     assert.deepEqual(seq, [[["test1", "test2"], 1, null, null]])
   })
 })

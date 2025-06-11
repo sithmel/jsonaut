@@ -4,11 +4,11 @@ import { describe, it, beforeEach } from "node:test"
 import fs from "fs"
 import path from "path"
 
-import {streamToIterable} from "../src/index.js"
+import { streamToIterable } from "../src/index.js"
 
 /**
- * 
- * @param {string} filename 
+ *
+ * @param {string} filename
  * @returns {any}
  */
 function loadJSONSync(filename) {
@@ -33,12 +33,12 @@ describe("SequenceToStream sample files", () => {
 
       const decoder = new TextDecoder()
 
-
-      const str = await streamToIterable(readStream).toIterableBuffer().reduce((acc, data) => {
-        acc += decoder.decode(data)
-        return acc
-      }
-      , "")
+      const str = await streamToIterable(readStream)
+        .toIterableBuffer()
+        .reduce((acc, data) => {
+          acc += decoder.decode(data)
+          return acc
+        }, "")
 
       const copy = JSON.parse(str)
 
