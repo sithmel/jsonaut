@@ -17,6 +17,7 @@ async function* wraptIntoAsyncIterable(iterable) {
  * @param {any} obj
  * @param {Object} [options]
  * @param {number} [options.maxDepth=Infinity] - Max parsing depth
+ * @param {(arg0: Path) => boolean} [options.isMaxDepthReached=null] - Max parsing depth
  * @returns {ObjectSequenceProcessor}
  */
 export function objectToIterable(obj, options) {

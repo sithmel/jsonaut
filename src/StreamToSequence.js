@@ -1,7 +1,6 @@
 //@ts-check
 import {
   ParsingError,
-  decodeAndParse,
   stringifyAndEncode,
 } from "./lib/utils.js"
 import StreamJSONTokenizer, { TOKEN } from "./StreamJSONTokenizer.js"

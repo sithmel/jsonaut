@@ -29,10 +29,13 @@ export function isWhitespace(c) {
 
 /**
  * parse and include expression and return a Matcher
- * @param {string?} str - the include expression
+ * @param {string|MatcherContainer?} str - the include expression
  * @return {MatcherContainer}
  */
 function parseIncludes(str) {
+  if (str instanceof MatcherContainer) {
+    return str
+  }
   if (str == null) {
     return new MatcherContainer()
   }

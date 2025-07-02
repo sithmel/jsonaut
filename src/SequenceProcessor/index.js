@@ -5,6 +5,8 @@ import { GenericBatchIterable, BatchIterable } from "batch-iterable"
 import includes from "./includes.js"
 import SequenceToObject from "../SequenceToObject.js"
 import { toIterableBuffer } from "./toIterableBuffer.js"
+import {MatcherContainer} from "../lib/pathMatcher.js"
+
 /**
  * @template {[Path, Value] | [Path, Value, number, number]} T
  * @extends {GenericBatchIterable<T>}
@@ -12,7 +14,7 @@ import { toIterableBuffer } from "./toIterableBuffer.js"
 export class GenericSequenceProcessor extends GenericBatchIterable {
   /**
    * It filters the sequence based on the given expression
-   * @param {string} [expression]
+   * @param {string|MatcherContainer} [expression]
    * @returns {this}
    */
   includes(expression) {
@@ -24,17 +26,18 @@ export class GenericSequenceProcessor extends GenericBatchIterable {
 
   /**
    * Build an object back from the sequence
-   * @param {Object} options
-   * @param {boolean} [options.compactArrays=false] - if true ignore array index and generates arrays without gaps
+   * @param {Object} [options] - Options for the sequence to object conversion
+   * @param {any} [options.startObject] - object where to add data (defaults to an empty object)
+   * @param {(arg0: any) => void} [options.onUpdate] - function to call on each update of the object
    * @returns {Promise<any>}
    */
-  async toObject() {
+  async toObject(obj = undefined) {
     const builder = await this.reduce((builder, [path, value]) => {
       builder.add(path, value)
       return builder
-    }, new SequenceToObject())
+    }, new SequenceToObject(obj))
 
-    return builder.object
+    return builder.getObject()
   }
 
   /**

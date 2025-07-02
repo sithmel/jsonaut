@@ -18,29 +18,25 @@ import { streamToIterable } from "jsonaut"
 
 const readStream = fs.createReadStream('invoices.json')
 
-const obj = streamToIterable(readStream)
-  .includes(`'invoices'( 0..2( 'productName' 'itemsSold' 'unitPrice'))`)
+const obj = await streamToIterable(readStream)
+  .includes(`'invoices'( 0..2( 'productName' 'itemsSold' 'unitPrice' ))`)
   .toObject()
-  .then((obj) => {
-    // once I read the data I need, I no longer need to finish consuming the stream
-    readStream.destroy()
-    console.log(obj)
-    // obj contains the first 2 invoices
-    // including only the itemsSold and unitPrice
-  })
+
+// once I read the data I need, I no longer need to finish consuming the stream
+readStream.destroy()
+console.log(obj)
 ```
 This prints:
 ```js
 {[
   {productName: 'Bright copper kettles', itemSold: 12, unitPrice: 11.4},
-  {productName: 'Warm woolen mittens', itemSold: 13, unitPrice: 1.44},
-  {productName: 'Brown paper packages', itemSold: 23, unitPrice: 2.3}
+  {productName: 'Warm woolen mittens', itemSold: 13, unitPrice: 1.44}
 ]}
 ```
 
 ### Filtering a JSON stream
 
-If you prefer to write the stream directly:
+This is the same example but it writes to a stream without deserialising the JSON to an Object:
 
 ```js
 import fs from "fs"
@@ -49,44 +45,48 @@ import { streamToIterable } from "jsonaut"
 const readStream = fs.createReadStream(inputFilePath)
 const writeStream = fs.createWriteStream(outputFilePath);
 
-streamToIterable(readStream)
+await streamToIterable(readStream)
   .includes(`'invoices'( 0..2( 'productName' 'itemsSold' 'unitPrice'))`)
   .toIterableBuffer()
   .forEach((data) => {
     writeStream.write(data)
   })
-  .then(() => {
-    writeStream.end()
-    readStream.destroy()
-  })
+
+writeStream.end()
+readStream.destroy()
 ```
-This is equivalent to the previous example, but it writes the output in a stream instead.
 
 ### Transform JSON stream
 
+In this example I am using filter and map to modify the data stream and reduce to aggregate some data. The whole thing without even deserialising the object in memory:
+
 ```js
 import fs from "fs"
-import { streamToIterable } from "jsonaut"
+import { streamToIterable, toValueObject } from "jsonaut"
 
 const readStream = fs.createReadStream(inputFilePath)
-const writeStream = fs.createWriteStream(outputFilePath);
 
-streamToIterable(readStream, { maxDepth: 2 })
+const mostSuccessfulProducts = streamToIterable(readStream, { maxDepth: 2 })
+  .filter(([_pathObj, valueObj]) => {
+    return valueObj.decoded.itemsSold >= 1000
+  })
   .map(([pathObj, valueObj]) => {
     const value = valueObj.decoded
     return [pathObj, toValueObject({...value, total: value.itemsSold * value.unitPrice})]
   })
-  .filter(([_pathObj, valueObj]) => {
-    return valueObj.decoded.total >= 1000
-  })
-  .toIterableBuffer()
-  .forEach((data) => {
-    writeStream.write(data)
-  })
-  .then(() => {
-    writeStream.end()
-    readStream.destroy()
-  })
+
+console.log('Revenues for most successful products')
+
+const totalRevenues = await mostSuccessfulProducts
+  .reduce((acc, [_path, value]) => {
+    const {productName, total} = value.decoded
+    console.log(`Product "${productName}" revenues: ${total}`)
+    return acc + total
+  }, 0)
+
+console.log('Total:', totalRevenues)
+
+readStream.destroy()
 ```
 
 ### Rendering partial state
@@ -102,26 +102,156 @@ const objectBuilder = new SequenceToObject()
 const controller = new AbortController()
 const signal = controller.signal
 
-fetch(url, { signal })
-  .then(async (response) => {
-    // iter is an asyncIterable of iterables (see BatchIterable)
-    const iter = streamToIterable(response.body)
-    for await (const iterables of iter) {
-      // this adds to the object the chunk of sequence I could read so far
-      for (const [path, value] of iterables) {
-        objectBuilder.add(path, value)
+const response = await fetch(url, { signal })
+
+// iter is an asyncIterable of iterables (see BatchIterable)
+const iter = streamToIterable(response.body)
+
+for await (const iterables of iter) {
+  // this adds to the object the chunk of sequence I could read so far
+  for (const [path, value] of iterables) {
+    objectBuilder.add(path, value)
+  }
+  // I can now render the object containing the data I fetched so far
+  // "render" is left to implement
+  render(objectBuilder.getObject())
+  // I can decide to stop fetching and parsing the stream using abort
+  // "shouldStop" is left to implement
+  if (shouldStop()) {
+    controller.abort()
+    break
+  }
+}
+```
+
+### Index a JSON and load a JSON fragment
+
+Let's assume we have a JSON containing a list of objects:
+```json
+[
+  {
+    "created_at": "Mon, 19 Dec 2011 18:56:59 +0000",
+    "from_user": "edjoperez",
+    "from_user_id": 372052399,
+    "from_user_id_str": "372052399",
+    "from_user_name": "Ed Perez",
+    "geo": null,
+    "id": 148839261322477570,
+    "id_str": "148839261322477568",
+    "iso_language_code": "en",
+    "metadata": { "result_type": "recent" },
+    "profile_image_url": "http://a0.twimg.com/sticky/default_profile_images/default_profile_5_normal.png",
+    "profile_image_url_https": "https://si0.twimg.com/sticky/default_profile_images/default_profile_5_normal.png",
+    "source": "&lt;a href=&quot;http://twitter.com/&quot;&gt;web&lt;/a&gt;",
+    "text": "I have to tell you: There is a project to create GTK bindings to #Nodejs, can you imagine javascript in a desktop GUI application? :D",
+    "to_user": null,
+    "to_user_id": null,
+    "to_user_id_str": null,
+    "to_user_name": null
+  },
+  {
+    "created_at": "Mon, 19 Dec 2011 18:54:27 +0000",
+    "from_user": "donnfelker",
+    "from_user_id": 14393851,
+    "from_user_id_str": "14393851",
+    "from_user_name": "Donn Felker",
+    "geo": null,
+    "id": 148838620537696260,
+    "id_str": "148838620537696256",
+    "iso_language_code": "en",
+    "metadata": { "result_type": "recent" },
+    "profile_image_url": "http://a0.twimg.com/profile_images/1514965492/Photo_on_2011-08-26_at_15.28_2_normal.jpg",
+    "profile_image_url_https": "https://si0.twimg.com/profile_images/1514965492/Photo_on_2011-08-26_at_15.28_2_normal.jpg",
+    "source": "&lt;a href=&quot;http://www.tweetdeck.com&quot; rel=&quot;nofollow&quot;&gt;TweetDeck&lt;/a&gt;",
+    "text": "My last 3 days  - Android. Python. NodeJs. MongoDB. MySql. Sqlite. Json. Html. JavaScript. Django.",
+    "to_user": null,
+    "to_user_id": null,
+    "to_user_id_str": null,
+    "to_user_name": null
+  },
+  ... 
+]
+```
+This function creates an JSON containing the indeces of the various objects: 
+```js
+import fs from "fs"
+import path from "path"
+import { streamToIterable } from "jsonaut"
+
+async function createIndex(JSONPath, indexPath) {
+  const readStream = fs.createReadStream(JSONPath)
+  const indexObj = await streamToIterable(readStream, { maxDepth: 1 }).reduce(
+    (builder, [path, _value, start, end]) => {
+      if (path.length === 1) {
+        builder.add(path.decoded, [start, end])
       }
-      // I can now render the object containing the data I fetched so far
-      // "render" is left to you to implement
-      render(objectBuilder.getObject())
-      // I can decide to stop fetching and parsing the stream using abort
-      // "shouldStop" is left to you to implement
-      if (shouldStop()) {
-        controller.abort()
-        break
-      }
-    }
+      return builder
+    },
+    new SequenceToObject({ compactArrays: true }),
+  )
+  readStream.destroy()
+  fs.writeFileSync(indexPath, JSON.stringify(indexObj.object))
+}
+```
+Like this:
+```json
+[
+  [4, 899],
+  [903, 1819],
+  ...
+]
+```
+Then the object can be read like this:
+```js
+import fs from 'fs/promises'
+
+async function filterFile(JSONPath, indexPath, lineNumber) {
+  const indexReadStream = fs.createReadStream(indexPath)
+  const obj = await streamToIterable(indexReadStream, { maxDepth: 1 })
+    .includes(`${lineNumber}`)
+    .toObject({ compactArrays: true })
+
+  const [start, end] = obj[0]
+
+  indexReadStream.destroy()
+
+  const str = await fs.readFile(JSONPath, {
+    start,
+    end: end - 1,
+    encoding: "utf-8",
   })
+  const data = JSON.parse(str)
+  return data
+}
+```
+On the browser we can implement the equivalent using HTTP range requests:
+```js
+async function filterFile(JSONURL, indexURL, lineNumber) {
+  const controller = new AbortController()
+  const signal = controller.signal
+
+  let responseIndex = await fetch(indexURL, { signal })
+  const indexReadStream = responseIndex.body
+
+  const obj = await streamToIterable(indexReadStream, { maxDepth: 1 })
+    .includes(`${lineNumber}`)
+    .toObject({ compactArrays: true })
+
+  controller.abort()
+
+  const [startByte, endByte] = obj[0]
+
+  let responseJSON = await fetch(filename, {
+    headers: {
+      Range: `bytes=${startByte}-${endByte - 1}`,
+    },
+  })
+  if (!responseJSON.ok) {
+    throw new Error(`HTTP error! status: ${responseJSON.status}`);
+  }
+  const json = await responseJSON.json();
+  return json;
+}
 ```
 
 # Main concepts
@@ -139,16 +269,12 @@ An example of a sequence is:
 | ["keywords", 0], "json"    | {"name": "JSONaut", keywords: ["json"]}           |
 | ["keywords", 1], "stream"  | {"name": "JSONaut", keywords: ["json", "stream"]} |
 
-### About the ordering
-
-Streaming out JSON requires the "path, value" pairs to be emitted in **depth first** order of paths otherwise the resulting JSON will be malformed. This is the normal order in which data are stored in JSON.
-Alternatively, it also works if the paths are sorted comparing object keys in lexicographic order and array indexes from the smallest to the biggest. In this case, the structure will be respected, but not necessarily the order the keys presents in the original JSON (ES2015 standard introduced the concept of key ordering, but it is not respected here).
 
 ## BatchIterable
 
-A stream can be parsed using [asyncIterables](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/AsyncIterator) and every chunk of the stream parsed yields [iterables](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Iterators_and_generators). For this reason, the path value sequence can be typed as `AsyncIterable<Iterable<[Path, Value]>>`.
+A JSON stream can be read as [asyncIterable](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/AsyncIterator). Every chunk of the stream is a [typed array](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8Array). Once parsed it yields [iterables](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Iterators_and_generators) of path/value pairs. For this reason, the sequence can be typed as `AsyncIterable<Iterable<[Path, Value]>>`.
 I call `AsyncIterable<Iterable<T>>` a `BatchIterable<T>` for short.
-Javascript makes unwieldy to work with a type defined like that. It basically requires to a nested for loop like this one:
+Javascript makes unwieldy to work with a type defined like that. It basically requires a nested for loop like this one:
 ```js
 for await (const iterables of asyncIter) {
   for (const [path, value] of iterables) {
@@ -164,10 +290,10 @@ You can find the [documentation here](https://github.com/sithmel/batch-iterable)
 ## Path and Value encoding/decoding
 
 ### JSON Values
-While building this library I noticed that most of the computation time goes into decoding arrayBuffers to a Javascript strings. And this is a necessary passage to decode strings and numbers. To keep the performance at a reasonable level, the library avoids parsing the string unless is strictly necessary.
+While building this library I noticed that most of the computation time goes into decoding arrayBuffers to a Javascript strings. And this is a necessary passage to decode strings and numbers. To keep the performance at a reasonable level, the library avoids decoding and parsing strings unless is strictly necessary.
 This can be done using a set of classes that are storing the data as a buffer and they are decoding the data (and caching it) on demand.
 
-Here ia an example:
+Here is an example:
 ```js
 import {False, CachedString} from 'jsonaut'
 
@@ -176,7 +302,7 @@ const helloValue = new CachedString(new Uint8Array([34, 104, 101, 108, 108, 111,
 console.log(falseValue.decoded) // false
 console.log(falseValue.encoded) // false as Uint8Array encoded string
 
-console.log(helloValue.decoded) // "hello"
+console.log(helloValue.decoded) // the "hello" javascript string
 console.log(helloValue.encoded) // Uint8Array(7)[34, 104, 101, 108, 108, 111, 34]
 ```
 These object have a method to check for equality without decoding the string:
@@ -192,25 +318,33 @@ The value objects are:
 - CachedNumber
 - CachedSubObject
 
-It is available a function that converts a valid Javascript value into one of these Objects:
+`toValueObject` is a function that converts a valid Javascript value into one of these objects:
 ```js
 import {toValueObject} from 'jsonaut'
 
 const helloValue = toValueObject('hello')
+
+console.log(helloValue instanceof CachedString) // true
 ```
-**Note**: The buffer stored the JSON representation of the Javascript value. So in the case of strings it includes double quotes and escapes.
+**Note**: The buffer stored contains the JSON representation of the Javascript value. So in the case of strings it includes double quotes and escapes.
 
 ### JSON Path
-Paths contains both string and numbers. Strings are also encoded. Path are converted in encoded format using `toPathObject`
+Paths contains both string and numbers. Strings are also encoded using CachedString. Path are converted in encoded format using `toPathObject`
 ```js
 import {toPathObject} from 'jsonaut'
 
 const path = toPathObject(['hello', 'world', 0])
+console.log(path.length) // 3
 console.log(path.encoded) // [Uint8Array, UintArray, 0]
 
 console.log(path.decoded) // ['hello', 'world', 0]
+
+console.log(path.get(0)) // CachedString
+console.log(path.get(0).decoded) // "hello"
+
+console.log(path.get(2)) // 0
 ```
-Path objects contains some extra utility functions:
+Path objects contain some extra utility functions:
 ```js
 path.isEqual(otherPath) // true if the 2 paths are identical 
 const index = path.getCommonPathIndex(otherPath)
@@ -220,6 +354,7 @@ const index = path.getCommonPathIndex(otherPath)
 // index === path.length path is contained into otherPath
 // index === otherPath.length otherPath is contained into path
 ```
+
 ### How to use it
 ```js
 streamToIterable(readStream)
@@ -229,21 +364,21 @@ streamToIterable(readStream)
   })
   .filter(([_pathObj, valueObj]) => valueObj.decoded.total >= 1000)
 ```
+Just remember that decoding always comes with a performance penalty. So, when possible, use encoded buffer or use methods working with buffers (isEqual, getCommonPathIndex)
+The performance penalty is only paid once though. Once a value is decoded, it is cached.
 
-# Higher level functions
+# Functions
 
 ## streamToIterable
-This function takes as input a asyncIterable of buffers. This is the return value of Node.js and Web Streams:
+This function takes a asyncIterable of buffers as input. This is the return value of Node.js and Web Streams:
 ```js
 const readStream = fs.createReadStream('invoices.json')
 streamToIterable(readStream)
 ```
 or
 ```js
-fetch(url)
-  .then((response) => {
-    streamToIterable(response.body)
-  })
+const response = await fetch(url)
+streamToIterable(response.body)
 ```
 The object returned is a batchIterable that it can be consumed like this:
 ```js
@@ -279,6 +414,8 @@ The previous examples will return:
 ...
 ```
 
+Note: _There is an extremely rare corner case where the parser doesn't work as expected: when a json consists in a **single number and no trailing spaces**. In that case it is necessary to add a trailing space to make it work correctly!_
+
 ### maxDepth and isMaxDepthReached
 
 In some cases you would like to group more values together. You can do this limiting the depth of the parsing:
@@ -304,301 +441,107 @@ streamToIterable(readStream, { isMaxDepthReached: (path) => path.getCommonPathIn
 
 Note: Limiting the depth of parsing is also a way to increase the performance.
 
-
-# Lower level API
-
-## StreamToSequence
-
-StreamToSequence converts chunk of data coming from an iterable in a sequence.
-It is implemented as a [rfc8259](https://datatracker.ietf.org/doc/html/rfc8259) compliant parser. It takes an [array buffer](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer) as input (as [Uint8Array](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8Array)), this can come from different implementations of buffers: ([node buffers](https://nodejs.org/api/buffer.html) of [web streams](https://nodejs.org/api/webstreams.html)). See the [examples](#examples) below!
-
-Let's assume we have this JSON:
-
-```json
-[
-  {"firstName": "Bruce", "lastName": "Banner"},
-  {"firstName": "Peter", "lastName": "Parker"},
-  ...
-]
-```
-
+### Transform the sequence
+You can reconstruct an object out of a sequence using `toObject`.
 ```js
-import { StreamToSequence } from "jsonaut"
-
-const parser = new StreamToSequence()
-for async (const chunk of bufferIterable) {
-  for (const [path, value] of parser.iter(chunk)) {
-    console.log(path, value)
-  }
-}
+const obj = await streamToIterable(readStream)
+  .toObject()
 ```
+Or return a `BatchIterable<Uint8Array>` to transform the sequence back to a stream.
+```js
+await streamToIterable(readStream)
+  .toIterableBuffer()
+  .forEach((data) => {
+    writeStream.write(data)
+  })
 
+writeStream.end()
+readStream.destroy()
+```
+In building an object or streaming it out you have to consider 2 important caveats:
+
+- Streaming out JSON requires the "path, value" pairs to be emitted in **depth first** order of paths otherwise the resulting JSON will be malformed
+- Objects/Stream JSON won't contain holes in the array and actually array indexes in the paths are pretty much ignored. Arrays order depends on the order of the sequence
+
+BatchIterable offers other methods to transform the sequence: [map, filter, flatmap, drop, take](https://github.com/sithmel/batch-iterable) and many more!
+
+### filter the sequence efficiently
+_includes_ allows to select what paths we want to read and filter out the others. It is much faster then using regular __filter__ because it stop parsing the stream if no further matches are possible. Here is an example (using the same JSON):
+```js
+await streamToIterable(readStream)
+  .includes('"invoices" ( 0..2 ("productName"))')
+  .forEach(([path, value]) => {
+    console.log(path, value)
+  })
+
+readStream.destroy()
+```
 This will print:
-
-```
-[] []
-[0] {}
-[0, "firstName"] "Bruce"
-[0, "lastName"] "Banner"
-[1] {}
-[1, "firstName"] "Peter"
-[1, "lastName"] "Parker"
-...
-```
-
-_There is an extremely rare corner case where the parser doesn't work as expected: when a json consists in a **single number and no trailing spaces**. In that case it is necessary to add a trailing space to make it work correctly!_
-
-The parser ha a method to check if the JSON was parsed in its entirety `isFinished`. This can be used to verify is the JSON file is well formed, after the buffer has been entirely consumed.
-
-### Partial parsing
-
-StreamToSequence takes 2 optional parameters: _maxDepth_ and _includes_.
-
-maxDepth is used to group the data over a certain depth together. It also allows to considerable increase the speed of the parsing when used together with _includes_.
-
-Here is how it works:
-
-Let's assume we use the same JSON used above:
-
 ```js
-import { StreamToSequence } from "jsonaut"
-
-const parser = new StreamToSequence({maxDepth: 1})
-for async (const chunk of bufferIterable) {
-  for (const [path, value] of parser.iter(chunk)) {
-    console.log(path, value)
-  }
-}
+['invoices', 0, 'productName'] 'piano catapult'
+['invoices', 1, 'productName'] 'fake tunnel'
 ```
-
-This will print:
-
-```
-[] []
-[0] {"firstName": "Bruce", "lastName": "Banner"}
-[1] {"firstName": "Peter", "lastName": "Parker"}
-...
-```
-
-_includes_ allows to select what paths we want to read and filter the others. It is much faster then filtering the pairs after are emitted because allows stop parsing the stream if no further matches are possible. Here is an example (using the same JSON):
-
-```js
-import { StreamToSequence } from "jsonaut"
-
-const parser = new StreamToSequence({includes: '0 (firstName)'})
-for async (const chunk of bufferIterable) {
-  for (const [path, value] of parser.iter(chunk)) {
-    console.log(path, value)
-  }
-}
-```
-
-With this output:
-
-```
-[0, "firstName"] "Bruce"
-...
-```
-
-`includes` is able to figure out whether there are still data to extract of we can stop reading from the buffer.
-
-```js
-import { StreamToSequence } from "jsonaut"
-
-const parser = new StreamToSequence({includes: '0 (firstName)'})
-for async (const chunk of bufferIterable) {
-  if (parser.isExhausted()) break // no further data to read
-
-  for (const [path, value] of parser.iter(chunk)) {
-    console.log(path, value)
-  }
-}
-// stop the stream here!
-```
-
 More about [includes](#includes) syntax below!
 
 ### Buffer position
-
-The iter method yields 2 extra numbers. They are the starting and ending position of the buffer, corresponding to the value that is emitting.
+The sequence yields 2 extra numbers. They are the starting and ending position of the buffer, corresponding to the value that is emitting.
 So for example, with the JSON we used so far:
-
 ```js
-import { StreamToSequence } from "jsonaut"
+await streamToIterable(readStream)
+  .includes('"invoices" ( 0..2 ("productName"))')
+  .forEach(([path, value]) => {
+    console.log(path, value, start, end)
+  })
 
-const parser = new StreamToSequence({maxDepth: 1})
-for async (const chunk of bufferIterable) {
-  for (const [path, value, startPosition, endPosition] of parser.iter(chunk)) {
-    console.log(path, value, startPosition, endPosition)
-  }
-}
+readStream.destroy()
 ```
-
 This will print:
-
+```js
+['invoices', 0, 'productName'] 'piano catapult' 38 54
+['invoices', 1, 'productName'] 'fake tunnel' 112 125
 ```
-[] [] 0 1
-[0] {"firstName": "Bruce", "lastName": "Banner"} 4 49
-[1] {"firstName": "Peter", "lastName": "Parker"} 53 98
-...
-```
-
 Once the position of a value is known, is possible for example:
 
 - to index where the data is in the buffer and access them directly
 - to pause and resume the parsing from that position in the buffer
 
 It is possible to resume the parsing using the option `startingPath`.
-So for example, let's say we want to resume reading from "Peter Parker":
-
+So for example, let's say we want to resume reading from "piano catapult":
 ```js
-import { StreamToSequence } from "jsonaut"
+// the buffer starts with the position 54
+const readStream = fs.createReadStream(JSONPath, { start: 38 })
 
-const parser = new StreamToSequence({maxDepth: 1, startingPath: [1]})
-// bufferIterable MUST start from the byte number 53
+// the starting path is last path yielded  
+await streamToIterable(readStream, {startingPath: ['invoices', 0, 'productName']})
+  .forEach(([path, value]) => {
+    console.log(path, value)
+  })
 
-for async (const chunk of bufferIterable) {
-  for (const [path, value, startPosition, endPosition] of parser.iter(chunk)) {
-    console.log(path, value, startPosition, endPosition)
-  }
-}
+readStream.destroy()
 ```
 
-This will print:
-
-```
-[1] {"firstName": "Peter", "lastName": "Parker"} 0 45
-...
-```
-
-In this case startPosition and endPosition will be relative to the buffer starting on byte 53.
-
-## ObjectToSequence
-
-ObjectToSequence transforms a js object into a sequence:
-
+## objectToIterable
+This is a version of streamToIterable that takes an object as input. Instead of a stream. It was implemented mainly to be used as a mock and reference implementation.
 ```js
-import { ObjectToSequence } from "jsonaut"
-
-const parser = new ObjectToSequence()
-for (const [path, value] of parser.iter({ hello: world })) {
-  console.log(path, value)
-}
+objectToIterable({.. a regular object ...})
+  .forEach(([path, value]) => console.log(path.decoded, value.decoded))
 ```
-
-This prints:
-
-```js
-[] {}
-['hello'] 'world'
-```
-
-ObjectToSequence takes 2 optional parameters: _maxDepth_ and _includes_.
-They works exactly the same as for StreamToSequence.
+It supports all features of `streamToIterable` with the exception:
+- startingPath is not a valid option
+- the output consists in a single asyncIterable item containing 1 iterable
+- start position and end position are not yielded
 
 ## SequenceToObject
-
-SequenceToObject reconstructs an object from a sequence:
+SequenceToObject reconstructs an object from a sequence. It is mainly used when :
 
 ```js
 import { SequenceToObject } from "jsonaut"
 
 const objBuilder = new SequenceToObject()
-objBuilder.add([], {}) // build initial object
 objBuilder.add(["hello"], "world")
-objBuilder.object === { hello: "world" }
+objBuilder.getObject() === { hello: "world" }
 ```
-
-The implementation forgives if "containers" (arrays and objects) are omitted
-
-```js
-const objBuilder = new SequenceToObject()
-objBuilder.add(["hello"], "world")
-objBuilder.object === { hello: "world" }
-```
-
-It also fills empty array positions with nulls:
-
-```js
-const objBuilder = new SequenceToObject()
-objBuilder.add([2], "hello world")
-objBuilder.object === [null, null, "hello world"]
-```
-
-Unless the options `compactArrays` is true:
-
-```js
-const objBuilder = new SequenceToObject({ compactArrays: true })
-objBuilder.add([2], "hello world")
-objBuilder.object === ["hello world"]
-```
-
-## SequenceToStream
-
-SequenceToStream allows to reconstruct a JSON stream from a sequence:
-
-```js
-import { SequenceToStream } from "jsonaut"
-
-let str = ""
-const decoder = new TextDecoder()
-const jsonStreamer = new SequenceToStream({
-  onData: async (data) => {
-    // this is normally used for writing to a buffer
-    // but in here we are decoding the buffer as js string
-    str += decoder.decode(data)
-  },
-})
-jsonStreamer.add([], {}) // build initial object
-jsonStreamer.add(["hello"], "world")
-await jsonStreamer.end() // wait that all pairs are emitted
-str === '{"hello":"world"}'
-```
-
-_The sequence must be in "depth first" order (with ordered indices), otherwise it won't work!_
-Also notice, the _end_ method must be called after adding all the path, value pairs.
-The implementation forgives if "containers" (arrays and objects) are omitted.
-
-```js
-let str = ""
-const jsonStreamer = new SequenceToStream({
-  onData: async (data) => {
-    str += data
-  },
-})
-jsonStreamer.add(["hello"], "world")
-await jsonStreamer.end()
-str === '{"hello":"world"}'
-```
-
-It also fills empty array positions with nulls:
-
-```js
-let str = ""
-const jsonStreamer = new SequenceToStream({
-  onData: async (data) => {
-    str += data
-  },
-})
-jsonStreamer.add([2], "hello world")
-await jsonStreamer.end()
-str === '[null,null,"hello world"]'
-```
-
-Unless the options `compactArrays` is chosen:
-
-```js
-let str = ""
-const jsonStreamer = new SequenceToStream({
-  onData: async (data) => {
-    str += data
-  },
-  compactArrays: true,
-})
-jsonStreamer.add([2], "hello world")
-await jsonStreamer.end()
-str === '["hello world"]'
-```
+This is used when working with for loop rather than BatchIterable. Otherwise is more practical just use the `toObject` method.
 
 ## Utilities
 
@@ -637,59 +580,19 @@ matcher.stringify("  ") // this returns an nicely indented version (2 spaces ind
 Note: The compact version of the expression (returned by stringify without arguments) has been designed to be passed as query parameter minimising the characters encoded (only the spaces), so that `'A'('B'('C' 'D') 'E') 'F'` becomes:
 `'A'('B'('C'%20'D')%20'E')%20'F'`.
 
-# Work with the sequence
+### toValueObject
+It transform a JS value into an appropriate [value object](#json-values).
 
-Both StreamToSequence.iter and ObjectToSequence.iter return an iterable of path/value pairs.
-These can be transformed using a for loop, and then converted to an object (SequenceToObject) or a JSON stream (SequenceToStream):
+### toPathObject
+It transform a JSON path into a [path object](#json-path).
 
-```js
-import { SequenceToObject, ObjectToSequence } from "jsonaut"
-
-function getPricesWithVAT(obj) {
-  const builder = new SequenceToObject()
-  const parser = new ObjectToSequence()
-  for (const [path, value] of parser.iter(obj)) {
-    if (path[0] === "prices") {
-      builder.add(path.slice(1), value * 0.2)
-    }
-  }
-  return builder.object
-}
-```
-
-This converts:
-
-```json
-{
-  "other data": {},
-  "prices": {
-    "Subscription 1 month": 20,
-    "Subscription 2 month": 35,
-    "Subscription 6 month": 100,
-    "Subscription 1 year": 180
-  }
-}
-```
-
-to:
-
-```json
-{
-  "Subscription 1 month": 24,
-  "Subscription 2 month": 42,
-  "Subscription 6 month": 120,
-  "Subscription 1 year": 216
-}
-```
-
-I suggest [iter-tools](https://github.com/iter-tools/iter-tools) to work with iterables and async iterables.
 
 ## Includes
 
-The _includes_ parameter can be used on StreamToSequence and ObjectToSequence and it allows to only emit pairs with a certain path.
+The _includes_ method can be used to only emit pairs with a certain path.
 This is more limited than a simple filter, but it is able to figure out when matches are no longer possible so that it is not necessary to parse the rest of the JSON.
 If more complex filtering is required, is easy enough to filter the sequence once is emitted.
-This parameter uses a simple and compact expression to perform matches. Including:
+It uses a simple and compact expression to perform matches. Including:
 
 - direct match of keys. Using a string enclosed in single or double quotes
 - direct match of array indices. Using a number
@@ -716,15 +619,13 @@ It is easier to show. Here's the JSON example:
 
 We can use this expression:
 
-```js
-const includes = `
+```
 'invoices'(
   0..2(
     'itemsSold'
     'unitPrice'
   )
 )
-`
 ```
 
 to get this sequence:
@@ -738,14 +639,12 @@ to get this sequence:
 
 or
 
-```js
-const includes = `
+```
 'products'(
   *(
     'productName'
   )
 )
-`
 ```
 
 to get this sequence:
@@ -754,132 +653,6 @@ to get this sequence:
 ['products', '123001', 'productName'] piano catapult
 ['products', '456001', 'productName'] fake tunnel
 ```
-
-# Examples
-
-## Filter a JSON stream
-
-In this example shows how to filter a JSON using fetch without loading it into memory.
-
-```js
-import { StreamToSequence, SequenceToStream } from "jsonaut"
-
-async function filterJSONStream(readable, writable, includes, controller) {
-  const encoder = new TextEncoder()
-  const writer = writable.getWriter()
-
-  const parser = new StreamToSequence({ includes })
-  const builder = new SequenceToStream({
-    onData: async (data) => writer.write(data),
-  })
-
-  for await (const chunk of readable) {
-    if (parser.isExhausted()) break
-
-    for (const [path, value] of parser.iter(chunk)) {
-      builder.add(path, value)
-    }
-  }
-
-  controller.abort()
-  await builder.end()
-}
-
-// the following function uses fetch to get a JSON
-// it filters the sequence and abort the request after
-// retrieving the data needed by the pathExpression
-async function fetchAndFilter(url, pathExpression) {
-  const controller = new AbortController()
-  const signal = controller.signal
-
-  let response = await fetch(url, { signal })
-  let { readable, writable } = new TransformStream()
-  let newResponse = new Response(readable, response)
-  filterJSONStream(response.body, writable, pathExpression)
-  return newResponse
-}
-```
-
-## Use a range request to load a JSON fragment
-Here is an [example](https://sithmel.github.io/jsonaut/demo) on how to use an HTTP range request to load a fragment of a JSON. In this example once picked a number, a JSON containing the index will be parsed. The index is generated like this (on the server side):
-```js
-async function createIndex(JSONPath, indexPath) {
-  const readStream = fs.createReadStream(JSONPath)
-  const parser = new StreamToSequence({
-    maxDepth: 1,
-  })
-  const builder = new SequenceToObject({ compactArrays: true })
-
-  for await (const chunk of readStream) {
-    for (const [path, value, start, end] of parser.iter(chunk)) {
-      if (path.length === 1) {
-        builder.add(path, [start, end])
-      }
-    }
-  }
-  readStream.destroy()
-  fs.writeFileSync(indexPath, JSON.stringify(builder.object))
-}
-```
-The client side code is in the folder ```demo-src```.
-
-## Filter a file using a node buffer
-
-This function read part of a JSON from a file.
-
-```js
-import fs from "fs"
-import { StreamToSequence, SequenceToObject } from "jsonaut"
-
-async function filterFile(filename, includes) {
-  const readStream = fs.createReadStream(filename)
-  const parser = new StreamToSequence()
-  const builder = new SequenceToObject()
-
-  for await (const chunk of readStream) {
-    if (parser.isExhausted()) break
-
-    for (const [path, value] of parser.iter(chunk)) {
-      builder.add(path, value)
-    }
-  }
-  readStream.destroy()
-  return builder.object
-}
-```
-
-## Streaming and non streaming parser
-
-The library provides 2 ways to get a sequence `ObjectToSequence` and `StreamToSequence`.
-You can use ObjectToSequence to return a sequence of path, value pairs from an object.
-
-```js
-import { ObjectToSequence } from "jsonaut"
-
-const parser = new ObjectToSequence()
-for (const [path, value] of parser.iter(obj)) {
-  // ..
-}
-```
-
-Of course you can easily convert it from a string:
-
-```js
-import { ObjectToSequence } from "jsonaut"
-
-const parser = new ObjectToSequence()
-for (const [path, value] of parser.iter(JSON.parse(obj))) {
-  // ..
-}
-```
-
-How does this differ from StreamToSequence? When should we use one or the other?
-StreamToSequence is a streaming parser, so it doesn't require to load the entire string in memory to work.
-
-From the point of view of raw speed StreamToSequence can be slower _if used to transform the entire JSON_ into a sequence especially _if the stream has low latency and high bandwidth_.
-
-However, using **include** and **maxDepth** to filter the JSON can be considerably faster and memory efficient.
-In doubt I suggest to benchmark specific cases.
 
 # Benchmarks
 
@@ -920,28 +693,3 @@ Median: 5,955.203 KB
 ```
 
 It is a little bit faster (not having to read the entire file every time). But also much more memory efficient.
-
-I have created a version that creates an index of the JSON file. So that it can be stored and records can be accessed directly:
-
-```
-$ node benchmarks/indexedFetch.mjs
-
-Timings
-=======
-Mean:   1.609 ms
-Median: 1.484 ms
-
-Heap
-====
-Mean:   8,400.1 KB
-Median: 8,351.094 KB
-```
-
-Which is 28 times faster than the out-of-the-box JSON.parse!
-
-# How StreamToSequence is optimized
-
-StreamToSequence reaches very good performance thanks to 2 optimizations:
-
-- **No need to read the entire stream**: once the data specified by **include** are found, the stream can be aborted. The performance improvement increases with the latency of the stream.
-- **Minimize encoding and parsing**: Encoding the buffer from UTF8 to a JS strings and parsing JSON values can take a considerable amount of resources. StreamToSequence works with buffers, encoding and parsing only the path and values that needs to be yielded. **maxDepth** and **include** both helps minimizing those.

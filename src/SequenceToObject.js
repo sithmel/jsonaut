@@ -19,9 +19,10 @@ function initObject(pathSegment) {
 class SequenceToObject {
   /**
    * Convert a sequence to a js object
+   * @param {any} [obj]
    */
-  constructor() {
-    this.object = undefined
+  constructor(obj = undefined) {
+    this.object = obj
     this.previousPath = new Path()
   }
 
