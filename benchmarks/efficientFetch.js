@@ -7,7 +7,7 @@ async function filterFile(JSONPath, lineNumber) {
   const readStream = fs.createReadStream(JSONPath)
   const obj = await streamToIterable(readStream, { maxDepth: 1 })
     .includes(`${lineNumber}`)
-    .toObject({ compactArrays: true })
+    .toObject()
   readStream.destroy()
   return obj
 }

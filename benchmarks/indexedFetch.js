@@ -1,4 +1,4 @@
-import { streamToIterable } from "../src/index.js"
+import { streamToIterable, toValueObject } from "../src/index.js"
 import SequenceToObject from "../src/SequenceToObject.js"
 import fs from "fs"
 import path from "path"
@@ -9,11 +9,11 @@ async function createIndex(JSONPath, indexPath) {
   const indexObj = await streamToIterable(readStream, { maxDepth: 1 }).reduce(
     (builder, [path, _value, start, end]) => {
       if (path.length === 1) {
-        builder.add(path.decoded, [start, end])
+        builder.add(path, toValueObject([start, end]))
       }
       return builder
     },
-    new SequenceToObject({ compactArrays: true }),
+    new SequenceToObject(),
   )
   readStream.destroy()
   fs.writeFileSync(indexPath, JSON.stringify(indexObj.object))
@@ -23,7 +23,7 @@ async function filterFile(JSONPath, indexPath, lineNumber) {
   const indexReadStream = fs.createReadStream(indexPath)
   const obj = await streamToIterable(indexReadStream, { maxDepth: 1 })
     .includes(`${lineNumber}`)
-    .toObject({ compactArrays: true })
+    .toObject()
 
   const [start, end] = obj[0]
 

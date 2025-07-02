@@ -212,7 +212,7 @@ class StreamToSequence {
               this.emptyObjectOrArrayStart,
               endToken + this.tokenizer.offsetIndexFromBeginning,
             ]
-            this.state = this._popState()
+            this.stateStack.pop() // we are going back to levels in the state
             this.state = this._popState()
           } else if (token === TOKEN.TRUE) {
             yield [
