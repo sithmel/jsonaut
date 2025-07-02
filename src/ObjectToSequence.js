@@ -1,8 +1,12 @@
 //@ts-check
-import { isArrayOrObject } from "./utils.js"
-import parser from "./pathExp/parser.js"
-import { MatcherContainer } from "./pathExp/matcher.js"
-import { Path } from "./pathExp/path.js"
+import { isArrayOrObject } from "./lib/utils.js"
+import {
+  toValueObject,
+  emptyObjValue,
+  emptyArrayValue,
+  Value,
+} from "./lib/value.js"
+import { toEncodedSegment, Path } from "./lib/path.js"
 
 /**
  * Convert a js value into a sequence of path/value pairs
@@ -12,48 +16,52 @@ class ObjectToSequence {
    * Convert a js value into a sequence of path/value pairs
    * @param {Object} [options]
    * @param {number} [options.maxDepth=Infinity] - Max parsing depth
-   * @param {string} [options.includes=null] - Expression using the includes syntax
+   * @param {(arg0: Path) => boolean} [options.isMaxDepthReached=null] - Max parsing depth
    */
   constructor(options = {}) {
-    const { maxDepth = Infinity } = options
-    this.maxDepth = maxDepth
+    const { maxDepth = null, isMaxDepthReached = null } = options
 
-    const { includes = null } = options
-    this.matcher = includes ? parser(includes) : new MatcherContainer()
+    if (maxDepth != null && isMaxDepthReached != null) {
+      throw new Error("You can only set one of maxDepth or isMaxDepthReached")
+    }
+    if (maxDepth != null) {
+      /** @type {(arg0: Path) => boolean} */
+      this._isMaxDepthReached = (path) => path.length >= maxDepth
+    } else if (isMaxDepthReached != null) {
+      this._isMaxDepthReached = isMaxDepthReached
+    } else {
+      this._isMaxDepthReached = () => false
+    }
   }
 
   /**
    * yields path/value pairs from a given object
    * @param {any} obj - Any JS value
-   * @param {Path} [currentPath] - Only for internal use
-   * @returns {Iterable<[import("./baseTypes").JSONPathType, import("./baseTypes").JSONValueType]>}
+   * @param {Path} currentPath - Only for internal use
+   * @returns {Iterable<[Path, Value]>}
    */
   *iter(obj, currentPath = new Path()) {
-    if (this.matcher.isExhausted()) {
-      return
-    }
-    if (isArrayOrObject(obj) && currentPath.length < this.maxDepth) {
+    if (isArrayOrObject(obj) && !this._isMaxDepthReached(currentPath)) {
       let pathSegmentsAndValues
       if (Array.isArray(obj)) {
-        if (this.matcher.doesMatch(currentPath)) {
-          yield [currentPath.toDecoded(), []]
+        if (obj.length === 0) {
+          yield [currentPath, emptyArrayValue]
         }
         pathSegmentsAndValues = obj.map((v, i) => [i, v])
       } else {
-        if (this.matcher.doesMatch(currentPath)) {
-          yield [currentPath.toDecoded(), {}]
+        if (Object.keys(obj).length === 0) {
+          yield [currentPath, emptyObjValue]
         }
         pathSegmentsAndValues = Object.entries(obj)
       }
       for (const [pathSegment, value] of pathSegmentsAndValues) {
-        currentPath.push(pathSegment)
-        yield* this.iter(value, currentPath)
-        currentPath.pop()
+        yield* this.iter(
+          value,
+          currentPath.withSegmentAdded(toEncodedSegment(pathSegment)),
+        )
       }
     } else {
-      if (this.matcher.doesMatch(currentPath)) {
-        yield [currentPath.toDecoded(), obj]
-      }
+      yield [currentPath, toValueObject(obj)]
     }
   }
 }

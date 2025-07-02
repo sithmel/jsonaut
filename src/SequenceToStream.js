@@ -1,23 +1,26 @@
 //@ts-check
-import {
-  getCommonPathIndex,
-  valueToString,
-  fromEndToIndex,
-  fromIndexToEnd,
-  pathSegmentTerminator,
-  isPreviousPathInNewPath,
-} from "./utils.js"
+import { mergeBuffers } from "./lib/utils.js"
+
+import { Path } from "./lib/path.js"
+import { CachedString, Value } from "./lib/value.js"
+
+const encoder = new TextEncoder()
+
+const OPEN_BRACES = encoder.encode("{")
+const CLOSE_BRACES = encoder.encode("}")
+const OPEN_BRACKET = encoder.encode("[")
+const CLOSE_BRACKET = encoder.encode("]")
+const COMMA = encoder.encode(",")
+const COLON = encoder.encode(":")
 
 /**
- * Enum for CONTEXT
+ * "}" or "]"
  * @private
- * @readonly
- * @enum {string}
+ * @param {number|CachedString|null} pathSegment
+ * @returns {Uint8Array}
  */
-const CONTEXT = {
-  OBJECT: "OBJECT",
-  ARRAY: "ARRAY",
-  NULL: "NULL",
+function pathSegmentTerminator(pathSegment) {
+  return pathSegment instanceof CachedString ? CLOSE_BRACES : CLOSE_BRACKET
 }
 
 /**
@@ -26,36 +29,20 @@ const CONTEXT = {
 class SequenceToStream {
   /**
    * Convert a sequence of path value pairs to a stream of bytes
-   * @param {Object} options
-   * @param {boolean} [options.compactArrays=false] - if true ignore array index and generates arrays without gaps
-   * @param {(arg0: Uint8Array) => Promise<void>} options.onData - function called when a new sequence of bytes is returned
    */
-  constructor({ onData, compactArrays = false }) {
-    /** @type {import("./baseTypes").JSONPathType} */
-    this.currentPath = []
-    this.onData = onData
-    /** @type CONTEXT */
-    this.context = CONTEXT.NULL
-    this.lastWritePromise = Promise.resolve()
-    this.compactArrays = compactArrays
-    this.encoder = new TextEncoder()
+  constructor() {
+    this.currentPath = new Path()
   }
 
   /**
-   * @private
-   * @param {string} str
-   */
-  async _output(str) {
-    await this.lastWritePromise
-    this.lastWritePromise = this.onData(this.encoder.encode(str))
-  }
-  /**
    * add a new path value pair
-   * @param {import("./baseTypes").JSONPathType} path - an array of path segments
-   * @param {import("./baseTypes").JSONValueType} value - the value at the corresponding path
-   * @returns {void}
+   * @param {Path} path - an array of path segments
+   * @param {Value} value - the value at the corresponding path
+   * @returns {Uint8Array}
    */
   add(path, value) {
+    /** @type {Array<Uint8Array>} */
+    const buffers = []
     const previousPath = this.currentPath
     this.currentPath = path
 
@@ -63,45 +50,37 @@ class SequenceToStream {
     // I get an index for the part in common
     // This way I know the common path and
     // a residual of the oldPath and newPath
-    const commonPathIndex = getCommonPathIndex(previousPath, path)
+    const commonPathIndex = previousPath.getCommonPathIndex(path)
 
-    if (
-      this.context === CONTEXT.NULL &&
-      previousPath.length === 0 &&
-      path.length > 0
-    ) {
-      if (typeof path[0] === "number") {
-        this._output("[")
+    if (previousPath.length === 0 && path.length > 0) {
+      if (typeof path.get(0) === "number") {
+        buffers.push(OPEN_BRACKET)
       } else {
-        this._output("{")
-      }
-    }
-    if (!isPreviousPathInNewPath(previousPath, path)) {
-      if (this.context === CONTEXT.OBJECT) {
-        this._output("}")
-      } else if (this.context === CONTEXT.ARRAY) {
-        this._output("]")
+        buffers.push(OPEN_BRACES)
       }
     }
     // close all opened path in reverse order
-    for (const [index, pathSegment] of fromEndToIndex(
-      previousPath,
+    for (const [index, pathSegment] of previousPath.fromEndToIndex(
       commonPathIndex,
     )) {
       if (index === commonPathIndex) {
-        this._output(",")
+        buffers.push(COMMA)
       } else {
-        this._output(pathSegmentTerminator(pathSegment))
+        buffers.push(pathSegmentTerminator(pathSegment))
       }
     }
     // open the new paths
-    for (const [index, pathSegment] of fromIndexToEnd(path, commonPathIndex)) {
+    for (const [index, pathSegment] of path.fromIndexToEnd(commonPathIndex)) {
       if (typeof pathSegment === "number") {
-        this._output(`${index === commonPathIndex ? "" : "["}`)
+        if (index !== commonPathIndex) {
+          buffers.push(OPEN_BRACKET)
+        }
 
         const previousIndex =
-          index === commonPathIndex ? (previousPath[commonPathIndex] ?? -1) : -1
-        if (typeof previousIndex === "string") {
+          index === commonPathIndex
+            ? (previousPath.get(commonPathIndex) ?? -1)
+            : -1
+        if (previousIndex instanceof CachedString) {
           throw new Error(
             `Mixing up array index and object keys is not allowed: before ${previousIndex} then ${pathSegment} in [${path}]`,
           )
@@ -111,41 +90,31 @@ class SequenceToStream {
             `Index are in the wrong order: before ${previousIndex} then ${pathSegment} in [${path}]`,
           )
         }
-        if (!this.compactArrays) {
-          const numberOfNulls = pathSegment - (previousIndex + 1)
-          if (numberOfNulls > 0) {
-            this._output(Array(numberOfNulls).fill("null").join(",") + ",")
-          }
+      } else if (pathSegment instanceof CachedString) {
+        if (index !== commonPathIndex) {
+          buffers.push(OPEN_BRACES)
         }
-      } else {
-        this._output(
-          `${index === commonPathIndex ? "" : "{"}${valueToString(
-            pathSegment,
-          )}:`,
-        )
+        buffers.push(pathSegment.encoded)
+        buffers.push(COLON)
       }
     }
-    const v = valueToString(value)
-    this.context =
-      v === "{" ? CONTEXT.OBJECT : v === "[" ? CONTEXT.ARRAY : CONTEXT.NULL
-    this._output(v)
+    const v = value.encoded
+    buffers.push(v)
+    return mergeBuffers(buffers)
   }
 
   /**
    * The input stream is completed
-   * @returns {Promise<void>}
+   * @returns {Uint8Array}
    */
-  async end() {
-    if (this.context === CONTEXT.OBJECT) {
-      this._output("}")
-    } else if (this.context === CONTEXT.ARRAY) {
-      this._output("]")
-    }
+  end() {
+    /** @type {Array<Uint8Array>} */
+    const buffers = []
     // all opened path in reverse order
-    for (const [_index, pathSegment] of fromEndToIndex(this.currentPath, 0)) {
-      this._output(pathSegmentTerminator(pathSegment))
+    for (const [_index, pathSegment] of this.currentPath.fromEndToIndex(0)) {
+      buffers.push(pathSegmentTerminator(pathSegment))
     }
-    await this.lastWritePromise
+    return mergeBuffers(buffers)
   }
 }
 

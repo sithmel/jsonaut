@@ -1,4 +1,4 @@
-import StreamToSequence from "../src/StreamToSequence.js"
+import { streamToIterable } from "../src/index.js"
 import SequenceToObject from "../src/SequenceToObject.js"
 import fs from "fs"
 import path from "path"
@@ -6,38 +6,29 @@ import perform from "./utils/index.js"
 
 async function createIndex(JSONPath, indexPath) {
   const readStream = fs.createReadStream(JSONPath)
-  const parser = new StreamToSequence({
-    maxDepth: 1,
-  })
-  const builder = new SequenceToObject({ compactArrays: true })
-
-  for await (const chunk of readStream) {
-    for (const [path, value, start, end] of parser.iter(chunk)) {
+  const indexObj = await streamToIterable(readStream, { maxDepth: 1 }).reduce(
+    (builder, [path, _value, start, end]) => {
       if (path.length === 1) {
-        builder.add(path, [start, end])
+        builder.add(path.decoded, [start, end])
       }
-    }
-  }
+      return builder
+    },
+    new SequenceToObject({ compactArrays: true }),
+  )
   readStream.destroy()
-  fs.writeFileSync(indexPath, JSON.stringify(builder.object))
+  fs.writeFileSync(indexPath, JSON.stringify(indexObj.object))
 }
 
 async function filterFile(JSONPath, indexPath, lineNumber) {
   const indexReadStream = fs.createReadStream(indexPath)
-  const parser = new StreamToSequence({
-    includes: `${lineNumber}`,
-    maxDepth: 1,
-  })
-  const builder = new SequenceToObject({ compactArrays: true })
+  const obj = await streamToIterable(indexReadStream, { maxDepth: 1 })
+    .includes(`${lineNumber}`)
+    .toObject({ compactArrays: true })
 
-  for await (const chunk of indexReadStream) {
-    if (parser.isExhausted()) break
-    for (const [path, value] of parser.iter(chunk)) {
-      builder.add(path, value)
-    }
-  }
+  const [start, end] = obj[0]
+
   indexReadStream.destroy()
-  const [start, end] = builder.object[0]
+
   const JSONReadStream = fs.createReadStream(JSONPath, {
     start,
     end: end - 1,

@@ -5,19 +5,17 @@ export default SequenceToObject
 declare class SequenceToObject {
   /**
    * Convert a sequence to a js object
-   * @param {Object} options
-   * @param {boolean} [options.compactArrays=false] - if true ignore array index and generates arrays without gaps
+   * @param {any} [obj]
    */
-  constructor(options?: { compactArrays?: boolean | undefined })
-  object: import("./baseTypes").JSONValueType | undefined
-  compactArrays: boolean
-  lastArray: any[] | [] | undefined
-  lastArrayIndex: number | undefined
+  constructor(obj?: any)
+  object: any
+  previousPath: Path
   /**
    * @private
-   * @param {import("./baseTypes").JSONSegmentPathType} pathSegment
-   * @param {import("./baseTypes").JSONValueType} currentObject
-   * @returns {import("./baseTypes").JSONSegmentPathType}
+   * @param {CachedString|number|null} pathSegment
+   * @param {boolean} isPreviousCommonPathSegment
+   * @param {any} currentObject
+   * @returns {string|number}
    */
   private _calculateRealIndex
   /**
@@ -28,13 +26,12 @@ declare class SequenceToObject {
   getObject(): any
   /**
    * Update the object with a new path value pairs
-   * @param {import("./baseTypes").JSONPathType} path - an array of path segments
-   * @param {import("./baseTypes").JSONValueType} value - the value corresponding to the path
-   * @returns {void}
+   * @param {Path} path - an array of path segments
+   * @param {Value} value - the value corresponding to the path
+   * @returns {this}
    */
-  add(
-    path: import("./baseTypes").JSONPathType,
-    value: import("./baseTypes").JSONValueType,
-  ): void
+  add(path: Path, value: Value): this
 }
+import { Path } from "./lib/path.js"
+import { Value } from "./lib/value.js"
 //# sourceMappingURL=SequenceToObject.d.ts.map

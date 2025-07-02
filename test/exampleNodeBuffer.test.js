@@ -1,13 +1,10 @@
 //@ts-check
 import assert from "assert"
-import pkg from "zunit"
+import { describe, it } from "node:test"
 
-import StreamToSequence from "../src/StreamToSequence.js"
-import SequenceToObject from "../src/SequenceToObject.js"
 import fs from "fs"
 import path from "path"
-
-const { xdescribe, describe, it, oit, before } = pkg
+import { streamToIterable } from "../src/index.js"
 
 /**
  * @param {string} filename
@@ -15,16 +12,10 @@ const { xdescribe, describe, it, oit, before } = pkg
  */
 async function filterFile(filename, includes) {
   const readStream = fs.createReadStream(path.join("test", "samples", filename))
-  const parser = new StreamToSequence({ includes })
-  const builder = new SequenceToObject()
+  const obj = await streamToIterable(readStream).includes(includes).toObject()
 
-  for await (const chunk of readStream) {
-    for (const [path, value] of parser.iter(chunk)) {
-      builder.add(path, value)
-    }
-  }
   readStream.destroy()
-  return builder.object
+  return obj
 }
 
 describe("Example Node buffer", () => {

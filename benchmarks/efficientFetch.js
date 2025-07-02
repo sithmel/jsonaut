@@ -1,25 +1,15 @@
-import StreamToSequence from "../src/StreamToSequence.js"
-import SequenceToObject from "../src/SequenceToObject.js"
+import { streamToIterable } from "../src/index.js"
 import fs from "fs"
 import path from "path"
 import perform from "./utils/index.js"
 
 async function filterFile(JSONPath, lineNumber) {
   const readStream = fs.createReadStream(JSONPath)
-  const parser = new StreamToSequence({
-    includes: `${lineNumber}`,
-    maxDepth: 1,
-  })
-  const builder = new SequenceToObject({ compactArrays: true })
-
-  for await (const chunk of readStream) {
-    if (parser.isExhausted()) break
-    for (const [path, value] of parser.iter(chunk)) {
-      builder.add(path, value)
-    }
-  }
+  const obj = await streamToIterable(readStream, { maxDepth: 1 })
+    .includes(`${lineNumber}`)
+    .toObject({ compactArrays: true })
   readStream.destroy()
-  return builder.object
+  return obj
 }
 
 const JSON_PATH = path.join("test", "samples", "twitter.json")

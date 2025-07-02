@@ -1,13 +1,11 @@
 //@ts-check
 import assert from "assert"
-import pkg from "zunit"
+import { describe, it, beforeEach } from "node:test"
 import fs from "fs"
 import path from "path"
 
 import SequenceToObject from "../src/SequenceToObject.js"
 import StreamToSequence from "../src/StreamToSequence.js"
-
-const { describe, it, oit, beforeEach } = pkg
 
 describe("StreamToSequence sample files", () => {
   let parser
@@ -28,8 +26,9 @@ describe("StreamToSequence sample files", () => {
       const json = fs.readFileSync(path.join("test", "samples", filename), {
         encoding: "utf-8",
       })
-      for await (const chunk of readStream) {
-        for (const [k, v] of parser.iter(chunk)) {
+
+      for await (const iterable of parser.iter(readStream)) {
+        for (const [k, v] of iterable) {
           builder.add(k, v)
         }
       }

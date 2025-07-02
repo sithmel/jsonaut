@@ -1,14 +1,14 @@
 //@ts-check
 import assert from "assert"
-import pkg from "zunit"
+import { describe, it, beforeEach } from "node:test"
 
 import ObjectToSequence from "../src/ObjectToSequence.js"
 import SequenceToObject from "../src/SequenceToObject.js"
 
-const { describe, it, oit, beforeEach } = pkg
-
 describe("ObjParser", () => {
+  /** @type {(arg0: any) => void} */
   let parse
+  /** @type {SequenceToObject} */
   let builder
   beforeEach(() => {
     builder = new SequenceToObject()
@@ -30,24 +30,25 @@ describe("ObjParser", () => {
     assert.deepEqual(builder.object, obj)
   })
   describe("nesting with maxDepth", () => {
+    //* @type {(arg0: any) => [any, any][]} */
     let parserIter
     beforeEach(() => {
       const parser = new ObjectToSequence({ maxDepth: 1 })
-      parserIter = (obj) => Array.from(parser.iter(obj))
+      parserIter = (obj) =>
+        Array.from(parser.iter(obj)).map(([path, value]) => [
+          path.decoded,
+          value.decoded,
+        ])
     })
 
     it("works with object nested into object (1)", () => {
       const seq = parserIter({ test1: { test2: 1 } })
-      assert.deepEqual(seq, [
-        [[], {}],
-        [["test1"], { test2: 1 }],
-      ])
+      assert.deepEqual(seq, [[["test1"], { test2: 1 }]])
     })
 
     it("works with object nested into object (2)", () => {
       const seq = parserIter({ test1: { test2: 1 }, test3: 2 })
       assert.deepEqual(seq, [
-        [[], {}],
         [["test1"], { test2: 1 }],
         [["test3"], 2],
       ])
@@ -56,7 +57,6 @@ describe("ObjParser", () => {
     it("works with object nested into arrays (1)", () => {
       const seq = parserIter([{ test1: 1 }, { test2: 2 }])
       assert.deepEqual(seq, [
-        [[], []],
         [[0], { test1: 1 }],
         [[1], { test2: 2 }],
       ])
@@ -65,7 +65,6 @@ describe("ObjParser", () => {
     it("works with object nested into arrays (2)", () => {
       const seq = parserIter([{ test1: [1, "xyz"] }, { test2: 2 }])
       assert.deepEqual(seq, [
-        [[], []],
         [[0], { test1: [1, "xyz"] }],
         [[1], { test2: 2 }],
       ])
@@ -77,22 +76,9 @@ describe("ObjParser", () => {
         [4, 5, 6],
       ])
       assert.deepEqual(seq, [
-        [[], []],
         [[0], [1, 2, 3]],
         [[1], [4, 5, 6]],
       ])
-    })
-    describe("includes", () => {
-      let parserIter
-      beforeEach(() => {
-        const parser = new ObjectToSequence({ includes: "0 ('test1' (1))" })
-        parserIter = (obj) => Array.from(parser.iter(obj))
-      })
-
-      it("includes", () => {
-        const seq = parserIter([{ test1: [1, "xyz"] }, { test2: 2 }])
-        assert.deepEqual(seq, [[[0, "test1", 1], "xyz"]])
-      })
     })
   })
 })

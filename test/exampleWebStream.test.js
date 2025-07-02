@@ -1,11 +1,8 @@
 //@ts-check
 import assert from "assert"
-import pkg from "zunit"
+import { describe, it, before } from "node:test"
 
-import StreamToSequence from "../src/StreamToSequence.js"
-import SequenceToStream from "../src/SequenceToStream.js"
-
-const { xdescribe, describe, it, oit, before } = pkg
+import { streamToIterable } from "../src/index.js"
 
 /**
  * @param {{text:string}} output
@@ -41,22 +38,14 @@ function getTestWritableStream(output) {
  * @param {AbortController} controller
  */
 async function filterJSONStream(readable, writable, includes, controller) {
-  const encoder = new TextEncoder()
   const writer = writable.getWriter()
-
-  const parser = new StreamToSequence({ includes })
-  const builder = new SequenceToStream({
-    onData: async (data) => writer.write(data),
-  })
-
-  for await (const chunk of readable) {
-    for (const [path, value] of parser.iter(chunk)) {
-      builder.add(path, value)
-    }
-  }
-
+  await streamToIterable(readable)
+    .includes(includes)
+    .toIterableBuffer()
+    .forEach((data) => {
+      writer.write(data)
+    })
   controller.abort()
-  await builder.end()
 }
 
 describe("Example web stream", () => {
