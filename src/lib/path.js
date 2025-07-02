@@ -142,7 +142,10 @@ export class Path {
    * @returns {boolean}
    */
   isEqual(newPath) {
-    return this.length === newPath.length && this.getCommonPathIndex(newPath) === this.length
+    return (
+      this.length === newPath.length &&
+      this.getCommonPathIndex(newPath) === this.length
+    )
   }
 }
 

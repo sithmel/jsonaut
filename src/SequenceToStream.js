@@ -29,8 +29,6 @@ function pathSegmentTerminator(pathSegment) {
 class SequenceToStream {
   /**
    * Convert a sequence of path value pairs to a stream of bytes
-   * @param {Object} options
-   * @param {(arg0: Uint8Array) => Promise<void>} options.onData - function called when a new sequence of bytes is returned
    */
   constructor() {
     this.currentPath = new Path()

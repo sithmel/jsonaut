@@ -28,10 +28,10 @@
   },
   "homepage": "https://github.com/sithmel/jsonaut#readme",
   "devDependencies": {
-    "@types/node": "^22.15.27",
-    "@types/web": "^0.0.236",
-    "prettier": "^3.5.3",
-    "typedoc": "^0.28.5",
+    "@types/node": "^24.0.10",
+    "@types/web": "^0.0.245",
+    "prettier": "^3.6.2",
+    "typedoc": "^0.28.7",
     "typescript": "^5.8.3"
   },
   "prettier": {

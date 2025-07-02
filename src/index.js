@@ -8,5 +8,18 @@ export { default as SequenceToStream } from "./SequenceToStream.js"
 
 export { streamToIterable } from "./streamToIterable.js"
 export { objectToIterable } from "./objectToIterable.js"
-export { toValueObject, Value, True, False, Null, CachedValue, CachedString, CachedNumber, CachedSubObject, falseValue, trueValue, nullValue } from "./lib/value.js"
+export {
+  toValueObject,
+  Value,
+  True,
+  False,
+  Null,
+  CachedValue,
+  CachedString,
+  CachedNumber,
+  CachedSubObject,
+  falseValue,
+  trueValue,
+  nullValue,
+} from "./lib/value.js"
 export { toPathObject, Path } from "./lib/path.js"
