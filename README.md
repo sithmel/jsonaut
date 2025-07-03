@@ -1,7 +1,5 @@
 ![JSONaut logo](https://raw.githubusercontent.com/sithmel/jsonaut/main/logo/logo.png)
 
-# JSONaut
-
 JSONaut allows to work with JSON as streams, without the need to load them in memory.
 It converts them into a sequence of path/value pairs (using iterables) and offers a lot of features to manipulate that sequence and returns it as object or as a new stream.
 
@@ -27,18 +25,18 @@ import { streamToIterable } from "jsonaut"
 const readStream = fs.createReadStream("invoices.json")
 
 const obj = await streamToIterable(readStream)
-  .includes(
-    `
-  'invoices'(
-    0..2( # only these fields from the first 2 invoices
-    'productName'
-    'itemsSold'
-    'unitPrice'
+  .includes (`
+    'invoices' (
+      0..2 (
+        # only these fields from the first 2 invoices
+        'productName'
+        'itemsSold'
+        'unitPrice'
+      )
     )
-  )
   `,
   )
-  .toObject() // consume hte stream and transform to object
+  .toObject() // consumes the stream and transforms to an object
 
 readStream.destroy()
 console.log(obj)
@@ -118,7 +116,7 @@ readStream.destroy()
 
 ### Rendering partial state
 
-This is rendering the dat in the UI while a big JSON is being fetched.
+This is rendering the UI while a big JSON with the data is being fetched.
 
 ```js
 import { streamToIterable, SequenceToObject } from "jsonaut"
@@ -161,42 +159,14 @@ Let's assume we have a JSON containing a list of objects:
   {
     "created_at": "Mon, 19 Dec 2011 18:56:59 +0000",
     "from_user": "edjoperez",
-    "from_user_id": 372052399,
-    "from_user_id_str": "372052399",
-    "from_user_name": "Ed Perez",
-    "geo": null,
-    "id": 148839261322477570,
-    "id_str": "148839261322477568",
-    "iso_language_code": "en",
-    "metadata": { "result_type": "recent" },
-    "profile_image_url": "http://a0.twimg.com/sticky/default_profile_images/default_profile_5_normal.png",
-    "profile_image_url_https": "https://si0.twimg.com/sticky/default_profile_images/default_profile_5_normal.png",
-    "source": "&lt;a href=&quot;http://twitter.com/&quot;&gt;web&lt;/a&gt;",
     "text": "I have to tell you: There is a project to create GTK bindings to #Nodejs, can you imagine javascript in a desktop GUI application? :D",
-    "to_user": null,
-    "to_user_id": null,
-    "to_user_id_str": null,
-    "to_user_name": null
+    ...
   },
   {
     "created_at": "Mon, 19 Dec 2011 18:54:27 +0000",
     "from_user": "donnfelker",
-    "from_user_id": 14393851,
-    "from_user_id_str": "14393851",
-    "from_user_name": "Donn Felker",
-    "geo": null,
-    "id": 148838620537696260,
-    "id_str": "148838620537696256",
-    "iso_language_code": "en",
-    "metadata": { "result_type": "recent" },
-    "profile_image_url": "http://a0.twimg.com/profile_images/1514965492/Photo_on_2011-08-26_at_15.28_2_normal.jpg",
-    "profile_image_url_https": "https://si0.twimg.com/profile_images/1514965492/Photo_on_2011-08-26_at_15.28_2_normal.jpg",
-    "source": "&lt;a href=&quot;http://www.tweetdeck.com&quot; rel=&quot;nofollow&quot;&gt;TweetDeck&lt;/a&gt;",
     "text": "My last 3 days  - Android. Python. NodeJs. MongoDB. MySql. Sqlite. Json. Html. JavaScript. Django.",
-    "to_user": null,
-    "to_user_id": null,
-    "to_user_id_str": null,
-    "to_user_name": null
+    ...
   },
   ...
 ]
