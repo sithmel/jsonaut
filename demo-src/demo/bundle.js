@@ -2,9 +2,7 @@
   "use strict"
 
   //@ts-check
-  /**
-   * @private
-   */
+
   class ParsingError extends Error {
     /**
      * @param {string} message
@@ -23,17 +21,8 @@
     }
   }
 
-  /**
-   * Check if there is a white space
-   * @private
-   * @param {string} c
-   * @returns {boolean}
-   */
-  function isWhitespace(c) {
-    return c === "\n" || c === " " || c === "\r" || c === "\t"
-  }
-
   const decoder = new TextDecoder("utf8", { fatal: true, ignoreBOM: true })
+  const encoder$1 = new TextEncoder()
   /**
    * @private
    * @param {Uint8Array} buffer
@@ -43,7 +32,303 @@
     return JSON.parse(decoder.decode(buffer))
   }
 
-  new TextEncoder()
+  /**
+   * @private
+   * @param {any} value
+   * @returns {Uint8Array}
+   */
+  function stringifyAndEncode(value) {
+    return encoder$1.encode(JSON.stringify(value))
+  }
+
+  //@ts-check
+
+  const FALSE_BUFFER = stringifyAndEncode(false)
+  const NULL_BUFFER = stringifyAndEncode(null)
+  const TRUE_BUFFER = stringifyAndEncode(true)
+  const EMPTY_OBJECT_BUFFER = stringifyAndEncode({})
+  const EMPTY_ARRAY_BUFFER = stringifyAndEncode([])
+
+  class Value {
+    /** @return {any} */
+    get decoded() {
+      throw new Error("Not implemented")
+    }
+    /** @return {Uint8Array} */
+    get encoded() {
+      throw new Error("Not implemented")
+    }
+
+    /**
+     * @param {Value} _value
+     * @return {boolean} */
+    isEqual(_value) {
+      throw new Error("Not implemented")
+    }
+  }
+
+  class True extends Value {
+    /** @return {any} */
+    get decoded() {
+      return true
+    }
+    /** @return {Uint8Array} */
+    get encoded() {
+      return TRUE_BUFFER
+    }
+
+    /**
+     * @param {Value} value
+     * @return {boolean} */
+    isEqual(value) {
+      return value instanceof True
+    }
+  }
+
+  class False extends Value {
+    /** @return {any} */
+    get decoded() {
+      return false
+    }
+    /** @return {Uint8Array} */
+    get encoded() {
+      return FALSE_BUFFER
+    }
+    /**
+     * @param {Value} value
+     * @return {boolean} */
+    isEqual(value) {
+      return value instanceof False
+    }
+  }
+
+  class Null extends Value {
+    /** @return {any} */
+    get decoded() {
+      return null
+    }
+    /** @return {Uint8Array} */
+    get encoded() {
+      return NULL_BUFFER
+    }
+    /**
+     * @param {Value} value
+     * @return {boolean} */
+    isEqual(value) {
+      return value instanceof Null
+    }
+  }
+
+  class CachedValue extends Value {
+    /** @param {Uint8Array} data */
+    constructor(data) {
+      super()
+      this.data = data
+      /** @type {?string} */
+      this.cache = null
+    }
+    /** @return {any} */
+    get decoded() {
+      if (this.cache != null) {
+        return this.cache
+      }
+      this.cache = decodeAndParse(this.data)
+      return this.cache
+    }
+
+    /** @return {Uint8Array} */
+    get encoded() {
+      return this.data
+    }
+
+    /**
+     * @param {Value} otherValue
+     * @return {boolean} */
+    isEqual(otherValue) {
+      return (
+        this.encoded.byteLength === otherValue.encoded.byteLength &&
+        this.encoded.every(
+          (value, index) => value === otherValue.encoded[index],
+        )
+      )
+    }
+  }
+
+  class CachedString extends CachedValue {}
+  class CachedNumber extends CachedValue {}
+  class CachedSubObject extends CachedValue {}
+
+  const falseValue = new False()
+  const trueValue = new True()
+  const nullValue = new Null()
+  const emptyObjValue = new CachedSubObject(EMPTY_OBJECT_BUFFER)
+  const emptyArrayValue = new CachedSubObject(EMPTY_ARRAY_BUFFER)
+
+  //@ts-check
+
+  /**
+   * @typedef {CachedString|number} JSONSegmentPathEncodedType
+   */
+
+  /**
+   * @typedef {string | number} JSONSegmentPathType
+   */
+
+  /**
+   * @typedef {Array<JSONSegmentPathType>} JSONPathType
+   */
+
+  class Path {
+    /**
+     * @param {Array<JSONSegmentPathEncodedType>} [array]
+     * @param {number} [offset]
+     */
+    constructor(array = [], offset = 0) {
+      this.array = array
+      this.offset = offset
+    }
+
+    /** @return {number}*/
+    get length() {
+      return this.array.length - this.offset
+    }
+
+    /**
+     * Return a new Path with the last segment added
+     * @param {JSONSegmentPathEncodedType} segment
+     * @return {Path}
+     */
+    withSegmentAdded(segment) {
+      return new Path([...this.array, segment])
+    }
+
+    /**
+     * Return a new Path with the last segment removed
+     * @return {Path}
+     */
+    withSegmentRemoved() {
+      return new Path(this.array.slice(0, -1))
+    }
+
+    /**
+     * @param {number} index
+     * @return {?JSONSegmentPathEncodedType}
+     */
+    get(index) {
+      return this.array[index + this.offset]
+    }
+
+    /**
+     * @param {(arg0: JSONSegmentPathEncodedType) => any} func
+     * @return {Array<any>}
+     */
+    map(func) {
+      const length = this.length
+      const output = new Array(length) // Preallocate array size
+      for (let i = 0; i < length; i++) {
+        const segment = this.get(i)
+        if (segment == null) {
+          throw new Error("Can't be null or undefined")
+        }
+        output[i] = func(segment)
+      }
+      return output
+    }
+
+    /**
+     * @return {Path}
+     * */
+    rest() {
+      return new Path(this.array, this.offset + 1)
+    }
+
+    /** @return {JSONPathType} */
+    get decoded() {
+      return this.map((segment) => {
+        return segment instanceof CachedString ? segment.decoded : segment
+      })
+    }
+
+    /** @return {Array<Uint8Array|number>} */
+    get encoded() {
+      return this.map((segment) => {
+        return segment instanceof CachedString ? segment.encoded : segment
+      })
+    }
+
+    /**
+     * Yields item arrays from end back to index, yield true on last
+     * @param {number} index
+     * @returns {Iterable<[number, JSONSegmentPathEncodedType]>}
+     */
+    *fromEndToIndex(index) {
+      for (let i = this.length - 1; i >= index; i--) {
+        const segment = this.get(i)
+        if (segment == null) {
+          throw new Error("Path segment cannot be null")
+        }
+        yield [i, segment]
+      }
+    }
+
+    /**
+     * Yields item arrays from index to end, yield true on first
+     * @param {number} index
+     * @returns {Iterable<[number, JSONSegmentPathEncodedType]>}
+     */
+    *fromIndexToEnd(index) {
+      for (let i = index; i < this.length; i++) {
+        const segment = this.get(i)
+        if (segment == null) {
+          throw new Error("Path segment cannot be null")
+        }
+        yield [i, segment]
+      }
+    }
+    /**
+     * Return oldPath and newPath excluding the common part
+     * @param {Path} newPath
+     * @returns {number}
+     */
+    getCommonPathIndex(newPath) {
+      const length = Math.min(this.length, newPath.length)
+      for (let i = 0; i < length; i++) {
+        if (!areSegmentsEqual(this.get(i), newPath.get(i))) {
+          return i
+        }
+      }
+      return length
+    }
+
+    /**
+     * The paths are equal
+     * @param {Path} newPath
+     * @returns {boolean}
+     */
+    isEqual(newPath) {
+      return (
+        this.length === newPath.length &&
+        this.getCommonPathIndex(newPath) === this.length
+      )
+    }
+  }
+
+  /**
+   * Compare two pathSegments for equality
+   * @param {JSONSegmentPathEncodedType|null} segment1
+   * @param {JSONSegmentPathEncodedType|null} segment2
+   * @returns {boolean}
+   */
+  function areSegmentsEqual(segment1, segment2) {
+    if (segment1 === segment2) {
+      // they are numbers
+      return true
+    }
+    if (segment1 instanceof CachedString && segment2 instanceof CachedString) {
+      return segment1.isEqual(segment2)
+    }
+    return false
+  }
 
   //@ts-check
 
@@ -71,10 +356,6 @@
     CR: "\r".charCodeAt(0),
     LF: "\n".charCodeAt(0),
     TAB: "\t".charCodeAt(0),
-    BACKSPACE: "\x08".charCodeAt(0),
-    DC2: "\x12".charCodeAt(0),
-
-    B: "b".charCodeAt(0),
     T: "t".charCodeAt(0),
     F: "f".charCodeAt(0),
     N: "n".charCodeAt(0),
@@ -120,7 +401,7 @@
    * @readonly
    * @enum {number}
    */
-  const STATE$2 = {
+  const STATE$1 = {
     IDLE: state_enum++, // general stuff
     TRUE: state_enum++, // r
     TRUE2: state_enum++, // u
@@ -141,22 +422,16 @@
    * @private
    */
   class StreamJSONTokenizer {
-    /**
-     * Convert a stream of bytes (in chunks of ArrayBuffers) to a sequence tokens
-     * @param {{ maxDepth?: number }} options
-     */
-    constructor(options = {}) {
-      const { maxDepth = Infinity } = options
-      this.maxDepth = maxDepth
-      this.currentDepth = 0
-
+    constructor() {
       this.offsetIndexFromBeginning = 0
-      this.state = STATE$2.IDLE
+      this.state = STATE$1.IDLE
 
       /** @type number? */
       this.outputTokenStart = null
 
       this.currentBuffer = new Uint8Array()
+      this.maxDepthReached = false
+      this.currentDepthInSubObject = 0
     }
 
     /**
@@ -246,22 +521,22 @@
         let byte = this.currentBuffer[currentBufferIndex]
 
         switch (this.state) {
-          case STATE$2.STRING:
+          case STATE$1.STRING:
             if (byte === CHAR_CODE.QUOTE) {
-              if (this.currentDepth <= this.maxDepth) {
-                yield [
+              if (this.currentDepthInSubObject === 0) {
+                this.maxDepthReached = yield [
                   TOKEN.STRING,
                   this._getOutputTokenStart(),
                   currentBufferIndex + 1,
                 ]
               }
-              this.state = STATE$2.IDLE
+              this.state = STATE$1.IDLE
             } else if (byte === CHAR_CODE.BACKSLASH) {
-              this.state = STATE$2.STRING_SLASH_CHAR
+              this.state = STATE$1.STRING_SLASH_CHAR
             }
             continue
 
-          case STATE$2.IDLE:
+          case STATE$1.IDLE:
             if (
               byte === CHAR_CODE.SPACE ||
               byte === CHAR_CODE.LF ||
@@ -271,87 +546,103 @@
               continue
             }
             if (byte === CHAR_CODE.QUOTE) {
-              this.state = STATE$2.STRING
-              if (this.currentDepth <= this.maxDepth)
+              this.state = STATE$1.STRING
+              if (this.currentDepthInSubObject === 0)
                 this._startCaptureOutput(currentBufferIndex)
             } else if (byte === CHAR_CODE.T) {
-              this.state = STATE$2.TRUE
-              if (this.currentDepth <= this.maxDepth)
+              this.state = STATE$1.TRUE
+              if (this.currentDepthInSubObject === 0)
                 this._startCaptureOutput(currentBufferIndex)
             } else if (byte === CHAR_CODE.F) {
-              this.state = STATE$2.FALSE
-              if (this.currentDepth <= this.maxDepth)
+              this.state = STATE$1.FALSE
+              if (this.currentDepthInSubObject === 0)
                 this._startCaptureOutput(currentBufferIndex)
             } else if (byte === CHAR_CODE.N) {
-              this.state = STATE$2.NULL
-              if (this.currentDepth <= this.maxDepth)
+              this.state = STATE$1.NULL
+              if (this.currentDepthInSubObject === 0)
                 this._startCaptureOutput(currentBufferIndex)
             } else if (
               byte === CHAR_CODE.MINUS ||
               (CHAR_CODE.N0 <= byte && byte <= CHAR_CODE.N9)
             ) {
-              this.state = STATE$2.NUMBER
-              if (this.currentDepth <= this.maxDepth)
+              this.state = STATE$1.NUMBER
+              if (this.currentDepthInSubObject === 0)
                 this._startCaptureOutput(currentBufferIndex)
             } else if (byte === CHAR_CODE.OPEN_BRACES) {
-              if (this.currentDepth === this.maxDepth) {
-                this._startCaptureOutput(currentBufferIndex)
-              } else if (this.currentDepth < this.maxDepth) {
-                yield [
+              if (this.maxDepthReached) {
+                if (this.currentDepthInSubObject === 0) {
+                  this._startCaptureOutput(currentBufferIndex)
+                }
+                this.currentDepthInSubObject++
+              } else {
+                this.maxDepthReached = yield [
                   TOKEN.OPEN_BRACES,
                   currentBufferIndex,
                   currentBufferIndex + 1,
                 ]
               }
-              this.currentDepth++
             } else if (byte === CHAR_CODE.CLOSED_BRACES) {
-              this.currentDepth--
-              if (this.currentDepth === this.maxDepth) {
-                yield [
-                  TOKEN.SUB_OBJECT,
-                  this._getOutputTokenStart(),
-                  currentBufferIndex + 1,
-                ]
-              } else if (this.currentDepth < this.maxDepth) {
-                yield [
+              if (this.maxDepthReached && this.currentDepthInSubObject > 0) {
+                this.currentDepthInSubObject--
+                if (this.currentDepthInSubObject === 0) {
+                  this.maxDepthReached = yield [
+                    TOKEN.SUB_OBJECT,
+                    this._getOutputTokenStart(),
+                    currentBufferIndex + 1,
+                  ]
+                }
+              } else {
+                this.maxDepthReached = yield [
                   TOKEN.CLOSED_BRACES,
                   currentBufferIndex,
                   currentBufferIndex + 1,
                 ]
               }
             } else if (byte === CHAR_CODE.OPEN_BRACKETS) {
-              if (this.currentDepth === this.maxDepth) {
-                this._startCaptureOutput(currentBufferIndex)
-              } else if (this.currentDepth < this.maxDepth) {
-                yield [
+              if (this.maxDepthReached) {
+                if (this.currentDepthInSubObject === 0) {
+                  this._startCaptureOutput(currentBufferIndex)
+                }
+                this.currentDepthInSubObject++
+              } else {
+                this.maxDepthReached = yield [
                   TOKEN.OPEN_BRACKET,
                   currentBufferIndex,
                   currentBufferIndex + 1,
                 ]
               }
-              this.currentDepth++
             } else if (byte === CHAR_CODE.CLOSED_BRACKETS) {
-              this.currentDepth--
-              if (this.currentDepth === this.maxDepth) {
-                yield [
-                  TOKEN.SUB_OBJECT,
-                  this._getOutputTokenStart(),
-                  currentBufferIndex + 1,
-                ]
-              } else if (this.currentDepth < this.maxDepth) {
-                yield [
+              if (this.maxDepthReached && this.currentDepthInSubObject > 0) {
+                this.currentDepthInSubObject--
+                if (this.currentDepthInSubObject === 0) {
+                  this.maxDepthReached = yield [
+                    TOKEN.SUB_OBJECT,
+                    this._getOutputTokenStart(),
+                    currentBufferIndex + 1,
+                  ]
+                }
+              } else {
+                this.maxDepthReached = yield [
                   TOKEN.CLOSED_BRACKET,
                   currentBufferIndex,
                   currentBufferIndex + 1,
                 ]
               }
             } else if (byte === CHAR_CODE.COLON) {
-              if (this.currentDepth <= this.maxDepth) {
-                yield [TOKEN.COLON, currentBufferIndex, currentBufferIndex + 1]
+              if (this.currentDepthInSubObject === 0) {
+                this.maxDepthReached = yield [
+                  TOKEN.COLON,
+                  currentBufferIndex,
+                  currentBufferIndex + 1,
+                ]
               }
             } else if (byte === CHAR_CODE.COMMA) {
-              if (this.currentDepth <= this.maxDepth) {
-                yield [TOKEN.COMMA, currentBufferIndex, currentBufferIndex + 1]
+              if (this.currentDepthInSubObject === 0) {
+                this.maxDepthReached = yield [
+                  TOKEN.COMMA,
+                  currentBufferIndex,
+                  currentBufferIndex + 1,
+                ]
               }
             } else {
               throw new ParsingError(
@@ -361,12 +652,12 @@
             }
             continue
 
-          case STATE$2.STRING_SLASH_CHAR:
-            this.state = STATE$2.STRING
+          case STATE$1.STRING_SLASH_CHAR:
+            this.state = STATE$1.STRING
             continue
 
-          case STATE$2.TRUE:
-            if (byte === CHAR_CODE.R) this.state = STATE$2.TRUE2
+          case STATE$1.TRUE:
+            if (byte === CHAR_CODE.R) this.state = STATE$1.TRUE2
             else
               throw new ParsingError(
                 "Invalid true started with t",
@@ -374,8 +665,8 @@
               )
             continue
 
-          case STATE$2.TRUE2:
-            if (byte === CHAR_CODE.U) this.state = STATE$2.TRUE3
+          case STATE$1.TRUE2:
+            if (byte === CHAR_CODE.U) this.state = STATE$1.TRUE3
             else
               throw new ParsingError(
                 "Invalid true started with tr",
@@ -383,16 +674,16 @@
               )
             continue
 
-          case STATE$2.TRUE3:
+          case STATE$1.TRUE3:
             if (byte === CHAR_CODE.E) {
-              if (this.currentDepth <= this.maxDepth) {
-                yield [
+              if (this.currentDepthInSubObject === 0) {
+                this.maxDepthReached = yield [
                   TOKEN.TRUE,
                   this._getOutputTokenStart(),
                   currentBufferIndex + 1,
                 ]
               }
-              this.state = STATE$2.IDLE
+              this.state = STATE$1.IDLE
             } else
               throw new ParsingError(
                 "Invalid true started with tru",
@@ -400,8 +691,8 @@
               )
             continue
 
-          case STATE$2.FALSE:
-            if (byte === CHAR_CODE.A) this.state = STATE$2.FALSE2
+          case STATE$1.FALSE:
+            if (byte === CHAR_CODE.A) this.state = STATE$1.FALSE2
             else
               throw new ParsingError(
                 "Invalid false started with f",
@@ -409,8 +700,8 @@
               )
             continue
 
-          case STATE$2.FALSE2:
-            if (byte === CHAR_CODE.L) this.state = STATE$2.FALSE3
+          case STATE$1.FALSE2:
+            if (byte === CHAR_CODE.L) this.state = STATE$1.FALSE3
             else
               throw new ParsingError(
                 "Invalid false started with fa",
@@ -418,8 +709,8 @@
               )
             continue
 
-          case STATE$2.FALSE3:
-            if (byte === CHAR_CODE.S) this.state = STATE$2.FALSE4
+          case STATE$1.FALSE3:
+            if (byte === CHAR_CODE.S) this.state = STATE$1.FALSE4
             else
               throw new ParsingError(
                 "Invalid false started with fal",
@@ -427,16 +718,16 @@
               )
             continue
 
-          case STATE$2.FALSE4:
+          case STATE$1.FALSE4:
             if (byte === CHAR_CODE.E) {
-              if (this.currentDepth <= this.maxDepth) {
-                yield [
+              if (this.currentDepthInSubObject === 0) {
+                this.maxDepthReached = yield [
                   TOKEN.FALSE,
                   this._getOutputTokenStart(),
                   currentBufferIndex + 1,
                 ]
               }
-              this.state = STATE$2.IDLE
+              this.state = STATE$1.IDLE
             } else
               throw new ParsingError(
                 "Invalid false started with fals",
@@ -444,8 +735,8 @@
               )
             continue
 
-          case STATE$2.NULL:
-            if (byte === CHAR_CODE.U) this.state = STATE$2.NULL2
+          case STATE$1.NULL:
+            if (byte === CHAR_CODE.U) this.state = STATE$1.NULL2
             else
               throw new ParsingError(
                 "Invalid null started with n",
@@ -453,8 +744,8 @@
               )
             continue
 
-          case STATE$2.NULL2:
-            if (byte === CHAR_CODE.L) this.state = STATE$2.NULL3
+          case STATE$1.NULL2:
+            if (byte === CHAR_CODE.L) this.state = STATE$1.NULL3
             else
               throw new ParsingError(
                 "Invalid null started with nu",
@@ -462,16 +753,16 @@
               )
             continue
 
-          case STATE$2.NULL3:
+          case STATE$1.NULL3:
             if (byte === CHAR_CODE.L) {
-              if (this.currentDepth <= this.maxDepth) {
-                yield [
+              if (this.currentDepthInSubObject === 0) {
+                this.maxDepthReached = yield [
                   TOKEN.NULL,
                   this._getOutputTokenStart(),
                   currentBufferIndex + 1,
                 ]
               }
-              this.state = STATE$2.IDLE
+              this.state = STATE$1.IDLE
             } else
               throw new ParsingError(
                 "Invalid null started with nul",
@@ -479,7 +770,7 @@
               )
             continue
 
-          case STATE$2.NUMBER:
+          case STATE$1.NUMBER:
             if (
               (CHAR_CODE.N0 <= byte && byte <= CHAR_CODE.N9) ||
               byte === CHAR_CODE.DOT ||
@@ -489,14 +780,14 @@
             );
             else {
               currentBufferIndex--
-              if (this.currentDepth <= this.maxDepth) {
-                yield [
+              if (this.currentDepthInSubObject === 0) {
+                this.maxDepthReached = yield [
                   TOKEN.NUMBER,
                   this._getOutputTokenStart(),
                   currentBufferIndex + 1,
                 ]
               }
-              this.state = STATE$2.IDLE
+              this.state = STATE$1.IDLE
             }
             continue
 
@@ -509,550 +800,6 @@
       }
       this._saveBufferForNextCall(currentBufferIndex + 1) // save leftovers for next call
     }
-  }
-
-  //@ts-check
-
-  /**
-   * @private
-   */
-  class CachedStringBuffer {
-    /** @param {Uint8Array} data */
-    constructor(data) {
-      this.data = data
-      /** @type {?string} */
-      this.cache = null
-    }
-    /** @return {import("../baseTypes").JSONSegmentPathType} */
-    toDecoded() {
-      if (this.cache != null) {
-        return this.cache
-      }
-      const cache = decodeAndParse(this.data)
-      this.cache = cache
-      return cache
-    }
-    /** @return {Uint8Array} */
-    get() {
-      return this.data
-    }
-  }
-
-  /**
-   * @private
-   */
-  class Path {
-    /**
-     * @param {Array<CachedStringBuffer|number|string>} [array]
-     * @param {number} [offset]
-     */
-    constructor(array = [], offset = 0) {
-      this.array = array
-      this.offset = offset
-    }
-
-    /** @return {number}*/
-    get length() {
-      return this.array.length - this.offset
-    }
-
-    /** @param {CachedStringBuffer|number|string} segment*/
-    push(segment) {
-      this.array.push(segment)
-    }
-
-    /** @return {?CachedStringBuffer|number|string}*/
-    pop() {
-      return this.array.pop() ?? null
-    }
-
-    /**
-     * @param {number} index
-     * @return {?CachedStringBuffer|number|string}
-     */
-    get(index) {
-      return this.array[index + this.offset]
-    }
-
-    /**
-     * @param {(arg0: CachedStringBuffer|number|string) => any} func
-     * @return {Array<any>}
-     */
-    map(func) {
-      const length = this.length
-      const output = new Array(length) // Preallocate array size
-      for (let i = 0; i < length; i++) {
-        const segment = this.get(i)
-        if (segment == null) {
-          throw new Error("Can't be null or undefined")
-        }
-        output[i] = func(segment)
-      }
-      return output
-    }
-
-    /**
-     * @return {Path}
-     * */
-    rest() {
-      return new Path(this.array, this.offset + 1)
-    }
-
-    /** @return {import("../baseTypes").JSONPathType} */
-    toDecoded() {
-      return this.map((segment) => {
-        return segment instanceof CachedStringBuffer
-          ? segment.toDecoded()
-          : segment
-      })
-    }
-  }
-
-  //@ts-check
-
-  /**
-   * create spaces for indentation
-   * @private
-   * @param {string} spacer
-   * @param {number} level
-   * @return string
-   */
-  function indentation(spacer, level) {
-    return "\n" + spacer.repeat(level)
-  }
-
-  /**
-   * This class is used as generic container of matchers
-   */
-  class MatcherContainer {
-    /**
-     * This class is used as generic container of matchers
-     * @param {Array<BaseMatcher>} [matchers]
-     */
-    constructor(matchers) {
-      this.matchers = matchers ?? []
-    }
-    /**
-     * Check for match
-     * @param {Path} path
-     * @return {boolean}
-     */
-    doesMatch(path) {
-      if (this.matchers.length == 0) {
-        return true
-      }
-      for (const matcher of this.matchers) {
-        if (matcher.doesMatch(path, true)) {
-          return true
-        }
-      }
-      return false
-    }
-    /**
-     * Check if matchers are exhausted
-     * @return {boolean}
-     */
-    isExhausted() {
-      if (this.matchers.length === 0) {
-        return false
-      }
-      return this.matchers.every((m) => m.isExhausted())
-    }
-
-    /**
-     * print as a string
-     * @param {string?} [spacer]
-     * @return {string}
-     */
-    stringify(spacer = null) {
-      return this.matchers
-        .map((m) => m.stringify(spacer, 0))
-        .join(spacer == null ? " " : indentation(spacer, 0))
-    }
-
-    /**
-     * return the length of the longest branch of the tree
-     * @return {number}
-     */
-    maxLength() {
-      const matcherMaxLength = this.matchers.map((m) => m.maxLength())
-      return Math.max(...[0, ...matcherMaxLength])
-    }
-  }
-
-  /**
-   * Matcher base implementation
-   */
-  class BaseMatcher {
-    /**
-     * This class is used as:
-     * - generic container of matchers
-     * - base class for all matchers
-     * - match *
-     * @param {Array<BaseMatcher>} [matchers]
-     */
-    constructor(matchers) {
-      this.matchers = matchers ?? []
-      this._isExhausted = false
-      this._isLastPossibleMatch = true
-    }
-
-    /**
-     * Check if this specific segment matches, without checking the children
-     * @param {?CachedStringBuffer|number|string} _segment
-     * @param {boolean} _parentLastPossibleMatch
-     * @return {boolean}
-     */
-    doesSegmentMatch(_segment, _parentLastPossibleMatch) {
-      return false
-    }
-
-    /**
-     * Check for match
-     * @param {Path} path
-     * @param {boolean} [parentLastPossibleMatch]
-     * @return {boolean}
-     */
-    doesMatch(path, parentLastPossibleMatch = true) {
-      if (
-        path.length === 0 ||
-        this.isExhausted() ||
-        !this.doesSegmentMatch(path.get(0), parentLastPossibleMatch)
-      ) {
-        return false
-      }
-      if (this.matchers.length == 0) {
-        return true
-      }
-      const newPath = path.rest()
-      for (const matcher of this.matchers) {
-        if (matcher.doesMatch(newPath, this._isLastPossibleMatch)) {
-          return true
-        }
-      }
-      return false
-    }
-    /**
-     * Check if matcher is exhausted (or children)
-     * @return {boolean}
-     */
-    isExhausted() {
-      if (this._isExhausted) {
-        return true
-      }
-      if (this.matchers.length === 0) {
-        return false
-      }
-      return this.matchers.every((m) => m.isExhausted())
-    }
-
-    /**
-     * print as a string
-     * @param {string?} [spacer]
-     * @param {number} [level]
-     * @return {string}
-     */
-    stringify(spacer = null, level = 0) {
-      if (this.matchers.length === 0) return ""
-      const spaceBefore = spacer == null ? "" : indentation(spacer, level + 1)
-      const spaceBetween = spacer == null ? " " : indentation(spacer, level + 1)
-      const spaceAfter = spacer == null ? "" : indentation(spacer, level)
-      return `(${spaceBefore}${this.matchers
-        .map((m) => m.stringify(spacer, level + 1))
-        .join(spaceBetween)}${spaceAfter})`
-    }
-
-    /**
-     * return the length of the longest branch of the tree
-     * @return {number}
-     */
-    maxLength() {
-      const matcherMaxLength = this.matchers.map((m) => m.maxLength())
-      return Math.max(...[0, ...matcherMaxLength]) + 1
-    }
-  }
-
-  /**
-   * @private
-   */
-  class AnyMatcher extends BaseMatcher {
-    /**
-     * Check if this specific segment matches, without checking the children
-     * @param {CachedStringBuffer|number|string} _segment
-     * @param {boolean} _parentLastPossibleMatch
-     * @return {boolean}
-     */
-    doesSegmentMatch(_segment, _parentLastPossibleMatch) {
-      this._isLastPossibleMatch = false
-      return true
-    }
-    /**
-     * print as a string
-     * @param {string?} [spacer]
-     * @param {number} [level]
-     * @return {string}
-     */
-    stringify(spacer = null, level = 0) {
-      return `*${super.stringify(spacer, level)}`
-    }
-  }
-
-  /**
-   * @private
-   */
-  class SegmentMatcher extends BaseMatcher {
-    /**
-     * direct match of a number of a string
-     * @param {Array<BaseMatcher>} [matchers]
-     * @param {import("../baseTypes").JSONSegmentPathType} segmentMatch
-     */
-    constructor(segmentMatch, matchers) {
-      super(matchers)
-      this.hasMatchedForLastTime = false
-      this._isLastPossibleMatch = true
-      const encoder = new TextEncoder()
-
-      this.segmentMatch = segmentMatch
-      this.segmentMatchEncoded =
-        typeof segmentMatch === "string"
-          ? encoder.encode(JSON.stringify(segmentMatch))
-          : segmentMatch
-    }
-    /**
-     * Check if this specific segment matches, without checking the children
-     * @param {CachedStringBuffer|number|string} segment
-     * @return {boolean}
-     */
-    _doesMatch(segment) {
-      if (
-        typeof this.segmentMatchEncoded === "number" &&
-        typeof segment === "number"
-      ) {
-        return segment === this.segmentMatchEncoded
-      }
-      if (
-        typeof this.segmentMatch === "string" &&
-        typeof segment === "string"
-      ) {
-        return segment === this.segmentMatch
-      }
-      if (
-        this.segmentMatchEncoded instanceof Uint8Array &&
-        segment instanceof CachedStringBuffer
-      ) {
-        const buffer = segment.get()
-        return (
-          this.segmentMatchEncoded.byteLength === buffer.byteLength &&
-          this.segmentMatchEncoded.every(
-            (value, index) => value === buffer[index],
-          )
-        )
-      }
-      return false
-    }
-    /**
-     * Check if this specific segment matches, without checking the children
-     * @param {CachedStringBuffer|number|string} segment
-     * @param {boolean} parentLastPossibleMatch
-     * @return {boolean}
-     */
-    doesSegmentMatch(segment, parentLastPossibleMatch) {
-      this._isLastPossibleMatch = parentLastPossibleMatch
-
-      const doesMatch = this._doesMatch(segment)
-
-      if (!doesMatch && this.hasMatchedForLastTime) {
-        this._isExhausted = true
-      }
-      if (this._isLastPossibleMatch) {
-        this.hasMatchedForLastTime = doesMatch
-      }
-      return doesMatch
-    }
-    /**
-     * print as a string
-     * @param {string?} [spacer]
-     * @param {number} [level]
-     * @return {string}
-     */
-    stringify(spacer = null, level = 0) {
-      let segmentStr
-      if (typeof this.segmentMatch === "string") {
-        if (this.segmentMatch.includes("'")) {
-          segmentStr = `"${this.segmentMatch}"`
-        } else {
-          segmentStr = `'${this.segmentMatch}'`
-        }
-      } else {
-        segmentStr = this.segmentMatch.toString()
-      }
-      return `${segmentStr}${super.stringify(spacer, level)}`
-    }
-  }
-
-  /**
-   * @private
-   */
-  class SliceMatcher extends BaseMatcher {
-    /**
-     * Check for a slice (numbers only)
-     * @param {{min: number, max: number}} options
-     * @param {Array<BaseMatcher>} [matchers]
-     */
-    constructor(options, matchers) {
-      super(matchers)
-      this.hasMatchedForLastTime = false
-      this.min = options.min ?? 0
-      this.max = options.max ?? Infinity
-      if (this.min >= this.max) {
-        throw new Error(
-          "in a slice, the min value should be smaller than the max",
-        )
-      }
-    }
-    /**
-     * Check if this specific segment matches, without checking the children
-     * @param {CachedStringBuffer|number|string} segment
-     * @param {boolean} parentLastPossibleMatch
-     * @return {boolean}
-     */
-    doesSegmentMatch(segment, parentLastPossibleMatch) {
-      if (typeof segment !== "number") {
-        return false
-      }
-      this._isLastPossibleMatch =
-        parentLastPossibleMatch && segment === this.max - 1
-
-      const doesMatch = segment >= this.min && segment < this.max
-      if (!doesMatch && this.hasMatchedForLastTime) {
-        this._isExhausted = true
-      }
-      if (this._isLastPossibleMatch) {
-        this.hasMatchedForLastTime = doesMatch
-      }
-      return doesMatch
-    }
-    /**
-     * print as a string
-     * @param {string?} [spacer]
-     * @param {number} [level]
-     * @return {string}
-     */
-    stringify(spacer = null, level = 0) {
-      const min = this.min === 0 ? "" : this.min.toString()
-      const max = this.max === Infinity ? "" : this.max.toString()
-      return `${min}..${max}${super.stringify(spacer, level)}`
-    }
-  }
-
-  //@ts-check
-
-  const STATE$1 = {
-    VALUE: "VALUE",
-    STRING_SINGLE_QUOTE: "STRING_SINGLE_QUOTE",
-    STRING_DOUBLE_QUOTE: "STRING_DOUBLE_QUOTE",
-    NUMBER_OR_SLICE: "NUMBER_OR_SLICE",
-    COMMENT: "COMMENT",
-  }
-
-  /**
-   * parse and include expression and return a Matcher
-   * @param {string} str - the include expression
-   * @return {MatcherContainer}
-   */
-  function parseIncludes(str) {
-    str += " " // this simplifies parsing of numbers (the extra space act as a delimiter)
-    const matcherStack = [new MatcherContainer()]
-    const getLastMatcherChildren = () =>
-      matcherStack[matcherStack.length - 1].matchers
-
-    let state = STATE$1.VALUE
-    let stringBuffer = ""
-    for (let index = 0; index < str.length; index++) {
-      const char = str[index]
-      switch (state) {
-        case STATE$1.VALUE:
-          if (isWhitespace(char)) continue
-          if (char === "(") {
-            // add last matcher to the stack
-            const lastMatcherChildren = getLastMatcherChildren()
-            matcherStack.push(
-              lastMatcherChildren[lastMatcherChildren.length - 1],
-            )
-          } else if (char === ")") {
-            // remove last matcher from the stack
-            matcherStack.pop()
-            if (matcherStack.length === 0) {
-              throw new ParsingError("Unpaired brackets: ", index)
-            }
-          } else if (char === "*") {
-            getLastMatcherChildren().push(new AnyMatcher())
-          } else if (char === '"') {
-            state = STATE$1.STRING_DOUBLE_QUOTE
-            stringBuffer = ""
-          } else if (char === "'") {
-            state = STATE$1.STRING_SINGLE_QUOTE
-            stringBuffer = ""
-          } else if (/[0-9\.]/.test(char)) {
-            state = STATE$1.NUMBER_OR_SLICE
-            stringBuffer = char
-          } else if (char === "#") {
-            state = STATE$1.COMMENT
-          } else {
-            throw new ParsingError("Unknown token: " + char, index)
-          }
-          continue
-        case STATE$1.COMMENT:
-          if (char === "\n") {
-            state = STATE$1.VALUE
-          }
-          continue
-        case STATE$1.STRING_SINGLE_QUOTE:
-          if (char === "'") {
-            getLastMatcherChildren().push(new SegmentMatcher(stringBuffer))
-            state = STATE$1.VALUE
-          } else {
-            stringBuffer += char
-          }
-          continue
-        case STATE$1.STRING_DOUBLE_QUOTE:
-          if (char === '"') {
-            getLastMatcherChildren().push(new SegmentMatcher(stringBuffer))
-            state = STATE$1.VALUE
-          } else {
-            stringBuffer += char
-          }
-          continue
-
-        case STATE$1.NUMBER_OR_SLICE:
-          if (!/[0-9\.]/.test(char)) {
-            if (stringBuffer.includes("..")) {
-              const minAndMax = stringBuffer.split("..")
-              if (minAndMax.length !== 2) {
-                throw new ParsingError("Invalid slice: " + state, index)
-              }
-              const min = minAndMax[0].length !== 0 ? parseInt(minAndMax[0]) : 0
-              const max =
-                minAndMax[1].length !== 0 ? parseInt(minAndMax[1]) : Infinity
-              getLastMatcherChildren().push(new SliceMatcher({ min, max }))
-            } else if (/[0-9]+/.test(stringBuffer)) {
-              getLastMatcherChildren().push(
-                new SegmentMatcher(parseInt(stringBuffer)),
-              )
-            } else {
-              throw new ParsingError("Invalid index: " + state, index)
-            }
-            state = STATE$1.VALUE
-            index--
-          } else {
-            stringBuffer += char
-          }
-          continue
-        default:
-          throw new ParsingError("Unknown state: " + state, index)
-      }
-    }
-    return matcherStack[0]
   }
 
   //@ts-check
@@ -1080,56 +827,81 @@
     /**
      * Convert a stream of bytes (in chunks) into a sequence of path/value pairs
      * @param {Object} [options]
-     * @param {number} [options.maxDepth=Infinity] - Max parsing depth
-     * @param {string} [options.includes=null] - Expression using the includes syntax
-     * @param {import("./baseTypes").JSONPathType} [options.startingPath] - The parser will consider this path as it is initial (useful to resume)
+     * @param {number} [options.maxDepth=null] - Max parsing depth
+     * @param {(arg0: Path) => boolean} [options.isMaxDepthReached=null] - Max parsing depth
+     * @param {import("./lib/path.js").JSONPathType} [options.startingPath] - The parser will consider this path as it is initial (useful to resume)
      */
     constructor(options = {}) {
-      const { maxDepth = Infinity } = options
-      this.currentDepthInObject = 0
+      const {
+        maxDepth = null,
+        isMaxDepthReached = null,
+        startingPath = [],
+      } = options
 
-      const { includes = null } = options
-      this.matcher = includes ? parseIncludes(includes) : new MatcherContainer()
-      if (this.matcher.maxLength() > maxDepth) {
-        throw new Error(
-          "The includes expression won't be able to fully match paths as they will be clamped to the chosen maxDepth",
-        )
+      if (maxDepth != null && isMaxDepthReached != null) {
+        throw new Error("You can only set one of maxDepth or isMaxDepthReached")
       }
-      const { startingPath = [] } = options
+      if (maxDepth != null) {
+        /** @type {(arg0: Path) => boolean} */
+        this._isMaxDepthReached = (path) => path.length >= maxDepth
+      } else if (isMaxDepthReached != null) {
+        this._isMaxDepthReached = isMaxDepthReached
+      } else {
+        this._isMaxDepthReached = () => false
+      }
 
-      this.tokenizer = new StreamJSONTokenizer({ maxDepth })
+      this.maxDepthReached = false
+      this.tokenizer = new StreamJSONTokenizer()
       this.state = STATE.VALUE
       /** @type {Array<STATE>}
        * @private
        */
       this.stateStack = this._initStateStack(startingPath)
-      this.currentPath = this._initCurrentPath(startingPath) // a combination of buffers (object keys) and numbers (array index)
+      this.currentPath = new Path() // this is the current path
+      this._initCurrentPath(startingPath) // a combination of buffers (object keys) and numbers (array index)
       this.stringBuffer = new Uint8Array() // this stores strings temporarily (keys and values)
+
+      this.emptyObjectOrArrayStart = 0 // this is used to store the start of an empty object or array
+    }
+
+    /**
+     * Check if the current path is at max depth
+     * @param {number | CachedString} segment
+     * @returns {void}
+     */
+    _pushCurrentPath(segment) {
+      this.currentPath = this.currentPath.withSegmentAdded(segment)
+      this.maxDepthReached = this._isMaxDepthReached(this.currentPath)
+    }
+
+    /**
+     * Check if the current path is at max depth
+     * @returns {void}
+     */
+    _popCurrentPath() {
+      this.currentPath = this.currentPath.withSegmentRemoved()
+      this.maxDepthReached = this._isMaxDepthReached(this.currentPath)
     }
 
     /**
      * Generate currentPath from a path
      * @private
-     * @param {import("./baseTypes").JSONPathType} path
-     * @returns {Path}
+     * @param {import("./lib/path.js").JSONPathType} path
      */
     _initCurrentPath(path) {
-      const encoder = new TextEncoder()
-      const currentPath = new Path()
       for (const segment of path) {
-        currentPath.push(
+        this._pushCurrentPath(
           typeof segment === "string"
-            ? new CachedStringBuffer(encoder.encode(`"${segment}"`))
+            ? new CachedString(stringifyAndEncode(segment))
             : segment,
         )
       }
-      return currentPath
     }
 
     /**
      * generate statestack from a path
      * @private
-     * @param {import("./baseTypes").JSONPathType} path
+     * @param {import("./lib/path.js").JSONPathType} path
      * @returns {Array<STATE>}
      */
     _initStateStack(path) {
@@ -1173,118 +945,108 @@
     }
 
     /**
-     * Check if there are no data to extract left considering the "includes" parameter
-     * @returns {boolean}
+     * Parse a json or json fragment from a buffer, split in chunks (ArrayBuffers)
+     * and yields a sequence of path/value pairs
+     * It also yields the starting and ending byte of each value
+     * @param {AsyncIterable<Uint8Array> | Iterable<Uint8Array>} asyncIterable - an arraybuffer that is a chunk of a stream
+     * @returns {AsyncIterable<Iterable<[Path, Value, number, number]>>} - path, value, byte start, and byte end when the value is in the buffer
      */
-    isExhausted() {
-      return this.matcher.isExhausted()
+    async *iter(asyncIterable) {
+      for await (const chunk of asyncIterable) {
+        yield this.iterChunk(chunk)
+      }
     }
-
     /**
      * Parse a json or json fragment from a buffer, split in chunks (ArrayBuffers)
      * and yields a sequence of path/value pairs
      * It also yields the starting and ending byte of each value
      * @param {Uint8Array} chunk - an arraybuffer that is a chunk of a stream
-     * @returns {Iterable<[import("./baseTypes").JSONPathType, import("./baseTypes").JSONValueType, number, number]>} - path, value, byte start, and byte end when the value is in the buffer
+     * @returns {Iterable<[Path, Value, number, number]>} - path, value, byte start, and byte end when the value is in the buffer
      */
-    *iter(chunk) {
-      if (this.matcher.isExhausted()) {
-        return
-      }
-      for (const [token, startToken, endToken] of this.tokenizer.iter(chunk)) {
+    *iterChunk(chunk) {
+      const iterator = this.tokenizer.iter(chunk)[Symbol.iterator]()
+      while (true) {
+        const result = iterator.next(this.maxDepthReached)
+        if (result.done) {
+          break
+        }
+        const [token, startToken, endToken] = result.value
         switch (this.state) {
           case STATE.VALUE: // any value
             if (token === TOKEN.STRING) {
-              if (this.matcher.doesMatch(this.currentPath)) {
-                yield [
-                  this.currentPath.toDecoded(),
-                  decodeAndParse(
-                    this.tokenizer.getOutputBuffer(startToken, endToken),
-                  ),
-                  startToken + this.tokenizer.offsetIndexFromBeginning,
-                  endToken + this.tokenizer.offsetIndexFromBeginning,
-                ]
-              }
+              yield [
+                this.currentPath,
+                new CachedString(
+                  this.tokenizer.getOutputBuffer(startToken, endToken),
+                ),
+                startToken + this.tokenizer.offsetIndexFromBeginning,
+                endToken + this.tokenizer.offsetIndexFromBeginning,
+              ]
               this.state = this._popState()
             } else if (token === TOKEN.OPEN_BRACES) {
-              if (this.matcher.doesMatch(this.currentPath)) {
-                yield [
-                  this.currentPath.toDecoded(),
-                  {},
-                  startToken + this.tokenizer.offsetIndexFromBeginning,
-                  endToken + this.tokenizer.offsetIndexFromBeginning,
-                ]
-              }
+              this.emptyObjectOrArrayStart =
+                startToken + this.tokenizer.offsetIndexFromBeginning
               this.state = STATE.OPEN_OBJECT
             } else if (token === TOKEN.OPEN_BRACKET) {
-              if (this.matcher.doesMatch(this.currentPath)) {
-                yield [
-                  this.currentPath.toDecoded(),
-                  [],
-                  startToken + this.tokenizer.offsetIndexFromBeginning,
-                  endToken + this.tokenizer.offsetIndexFromBeginning,
-                ]
-              }
-              this.currentPath.push(0)
+              this.emptyObjectOrArrayStart =
+                startToken + this.tokenizer.offsetIndexFromBeginning
+              this._pushCurrentPath(0)
               this.state = STATE.VALUE
               this._pushState(STATE.CLOSE_ARRAY)
             } else if (token === TOKEN.CLOSED_BRACKET) {
-              this.currentPath.pop()
-              this.state = this._popState()
+              // empty array
+              this._popCurrentPath()
+              yield [
+                this.currentPath,
+                emptyArrayValue,
+                this.emptyObjectOrArrayStart,
+                endToken + this.tokenizer.offsetIndexFromBeginning,
+              ]
+              this.stateStack.pop() // we are going back to levels in the state
               this.state = this._popState()
             } else if (token === TOKEN.TRUE) {
-              if (this.matcher.doesMatch(this.currentPath)) {
-                yield [
-                  this.currentPath.toDecoded(),
-                  true,
-                  startToken + this.tokenizer.offsetIndexFromBeginning,
-                  endToken + this.tokenizer.offsetIndexFromBeginning,
-                ]
-              }
+              yield [
+                this.currentPath,
+                trueValue,
+                startToken + this.tokenizer.offsetIndexFromBeginning,
+                endToken + this.tokenizer.offsetIndexFromBeginning,
+              ]
               this.state = this._popState()
             } else if (token === TOKEN.FALSE) {
-              if (this.matcher.doesMatch(this.currentPath)) {
-                yield [
-                  this.currentPath.toDecoded(),
-                  false,
-                  startToken + this.tokenizer.offsetIndexFromBeginning,
-                  endToken + this.tokenizer.offsetIndexFromBeginning,
-                ]
-              }
+              yield [
+                this.currentPath,
+                falseValue,
+                startToken + this.tokenizer.offsetIndexFromBeginning,
+                endToken + this.tokenizer.offsetIndexFromBeginning,
+              ]
               this.state = this._popState()
             } else if (token === TOKEN.NULL) {
-              if (this.matcher.doesMatch(this.currentPath)) {
-                yield [
-                  this.currentPath.toDecoded(),
-                  null,
-                  startToken + this.tokenizer.offsetIndexFromBeginning,
-                  endToken + this.tokenizer.offsetIndexFromBeginning,
-                ]
-              }
+              yield [
+                this.currentPath,
+                nullValue,
+                startToken + this.tokenizer.offsetIndexFromBeginning,
+                endToken + this.tokenizer.offsetIndexFromBeginning,
+              ]
               this.state = this._popState()
             } else if (token === TOKEN.NUMBER) {
-              if (this.matcher.doesMatch(this.currentPath)) {
-                yield [
-                  this.currentPath.toDecoded(),
-                  decodeAndParse(
-                    this.tokenizer.getOutputBuffer(startToken, endToken),
-                  ),
-                  startToken + this.tokenizer.offsetIndexFromBeginning,
-                  endToken + this.tokenizer.offsetIndexFromBeginning,
-                ]
-              }
+              yield [
+                this.currentPath,
+                new CachedNumber(
+                  this.tokenizer.getOutputBuffer(startToken, endToken),
+                ),
+                startToken + this.tokenizer.offsetIndexFromBeginning,
+                endToken + this.tokenizer.offsetIndexFromBeginning,
+              ]
               this.state = this._popState()
             } else if (token === TOKEN.SUB_OBJECT) {
-              if (this.matcher.doesMatch(this.currentPath)) {
-                yield [
-                  this.currentPath.toDecoded(),
-                  decodeAndParse(
-                    this.tokenizer.getOutputBuffer(startToken, endToken),
-                  ),
-                  startToken + this.tokenizer.offsetIndexFromBeginning,
-                  endToken + this.tokenizer.offsetIndexFromBeginning,
-                ]
-              }
+              yield [
+                this.currentPath,
+                new CachedSubObject(
+                  this.tokenizer.getOutputBuffer(startToken, endToken),
+                ),
+                startToken + this.tokenizer.offsetIndexFromBeginning,
+                endToken + this.tokenizer.offsetIndexFromBeginning,
+              ]
               this.state = this._popState()
             } else {
               throw new ParsingError(
@@ -1311,6 +1073,13 @@
 
           case STATE.OPEN_OBJECT: // after the "{" in an object
             if (token === TOKEN.CLOSED_BRACES) {
+              yield [
+                this.currentPath,
+                emptyObjValue,
+                this.emptyObjectOrArrayStart,
+                endToken + this.tokenizer.offsetIndexFromBeginning,
+              ]
+
               this.state = this._popState()
               break
             }
@@ -1330,7 +1099,7 @@
 
           case STATE.CLOSE_KEY: // after the key is over
             if (token === TOKEN.COLON) {
-              this.currentPath.push(new CachedStringBuffer(this.stringBuffer))
+              this._pushCurrentPath(new CachedString(this.stringBuffer))
               this._pushState(STATE.CLOSE_OBJECT)
               this.state = STATE.VALUE
             } else {
@@ -1343,10 +1112,10 @@
 
           case STATE.CLOSE_OBJECT: // after the value is parsed and the object can be closed
             if (token === TOKEN.CLOSED_BRACES) {
-              this.currentPath.pop()
+              this._popCurrentPath()
               this.state = this._popState()
             } else if (token === TOKEN.COMMA) {
-              this.currentPath.pop()
+              this._popCurrentPath()
               this.state = STATE.OPEN_KEY
             } else {
               throw new ParsingError(
@@ -1358,15 +1127,18 @@
 
           case STATE.CLOSE_ARRAY: // array ready to end, or restart after the comma
             if (token === TOKEN.COMMA) {
-              const previousIndex = this.currentPath.pop()
+              const previousIndex = this.currentPath.get(
+                this.currentPath.length - 1,
+              )
+              this._popCurrentPath()
               if (typeof previousIndex !== "number") {
                 throw new Error("Array index should be a number")
               }
-              this.currentPath.push(previousIndex + 1) // next item in the array
+              this._pushCurrentPath(previousIndex + 1)
               this._pushState(STATE.CLOSE_ARRAY)
               this.state = STATE.VALUE
             } else if (token === TOKEN.CLOSED_BRACKET) {
-              this.currentPath.pop() // array is over
+              this._popCurrentPath()
               this.state = this._popState()
             } else {
               throw new ParsingError(
@@ -1386,9 +1158,6 @@
               startToken + this.tokenizer.offsetIndexFromBeginning,
             )
         }
-        if (this.matcher.isExhausted()) {
-          return
-        }
       }
     }
   }
@@ -1396,10 +1165,13 @@
   //@ts-check
   /**
    * @private
-   * @param {import("./baseTypes").JSONSegmentPathType} pathSegment
+   * @param {CachedString|number|null} pathSegment
    * @returns {{}|[]}
    */
   function initObject(pathSegment) {
+    if (pathSegment == null) {
+      throw new Error("Path cannot be empty")
+    }
     return typeof pathSegment === "number" && pathSegment >= 0 ? [] : {}
   }
 
@@ -1409,41 +1181,37 @@
   class SequenceToObject {
     /**
      * Convert a sequence to a js object
-     * @param {Object} options
-     * @param {boolean} [options.compactArrays=false] - if true ignore array index and generates arrays without gaps
+     * @param {any} [obj]
      */
-    constructor(options = {}) {
-      const { compactArrays } = options
-      this.object = undefined
-      this.compactArrays = compactArrays ?? false
-
-      this.lastArray = undefined
-      this.lastArrayIndex = undefined
+    constructor(obj = undefined) {
+      this.object = obj
+      this.previousPath = new Path()
     }
 
     /**
      * @private
-     * @param {import("./baseTypes").JSONSegmentPathType} pathSegment
-     * @param {import("./baseTypes").JSONValueType} currentObject
-     * @returns {import("./baseTypes").JSONSegmentPathType}
+     * @param {CachedString|number|null} pathSegment
+     * @param {boolean} isPreviousCommonPathSegment
+     * @param {any} currentObject
+     * @returns {string|number}
      */
-    _calculateRealIndex(pathSegment, currentObject) {
-      if (typeof pathSegment === "string" || !this.compactArrays) {
-        return pathSegment
+    _calculateRealIndex(
+      pathSegment,
+      isPreviousCommonPathSegment,
+      currentObject,
+    ) {
+      if (pathSegment instanceof CachedString) {
+        return pathSegment.decoded
       }
-      if (Array.isArray(currentObject)) {
-        // copy values locally
-        const lastArray = this.lastArray
-        const lastArrayIndex = this.lastArrayIndex
-        // update with new values
-        this.lastArray = currentObject
-        this.lastArrayIndex = pathSegment
-        if (currentObject === lastArray && lastArrayIndex === pathSegment) {
-          return currentObject.length - 1
+
+      if (Array.isArray(currentObject) && pathSegment != null) {
+        if (isPreviousCommonPathSegment) {
+          return currentObject.length - 1 // same element
+        } else {
+          return currentObject.length // new element
         }
-        return currentObject.length
       }
-      return 0
+      throw new Error("Invalid path segment")
     }
 
     /**
@@ -1457,44 +1225,55 @@
 
     /**
      * Update the object with a new path value pairs
-     * @param {import("./baseTypes").JSONPathType} path - an array of path segments
-     * @param {import("./baseTypes").JSONValueType} value - the value corresponding to the path
-     * @returns {void}
+     * @param {Path} path - an array of path segments
+     * @param {Value} value - the value corresponding to the path
+     * @returns {this}
      */
     add(path, value) {
       if (path.length === 0) {
-        this.object = value
-        return
+        this.object = value.decoded
+        return this
       }
       if (this.object === undefined) {
-        this.object = initObject(path[0])
+        this.object = initObject(path.get(0))
       }
+
+      const commonPathIndex = this.previousPath.getCommonPathIndex(path)
       let currentObject = this.object
+
       for (let i = 0; i < path.length - 1; i++) {
-        // ignoring type errors here:
-        // if path is inconsistent with data, it should throw an exception
         const currentPathSegment = this._calculateRealIndex(
-          path[i],
+          path.get(i),
+          i < commonPathIndex,
           currentObject,
         )
-        const nextPathSegment = path[i + 1]
-        // @ts-ignore
+        const nextPathSegment = path.get(i + 1)
         if (currentObject[currentPathSegment] === undefined) {
-          // @ts-ignore
           currentObject[currentPathSegment] = initObject(nextPathSegment)
         }
-        // @ts-ignore
         currentObject = currentObject[currentPathSegment]
       }
-      // @ts-ignore
       const currentPathSegment = this._calculateRealIndex(
-        path[path.length - 1],
+        path.get(path.length - 1),
+        path.length - 1 < commonPathIndex,
         currentObject,
       )
-      // @ts-ignore
-      currentObject[currentPathSegment] = value
+      currentObject[currentPathSegment] = value.decoded
+      this.previousPath = path
+      return this
     }
   }
+
+  //@ts-check
+
+  const encoder = new TextEncoder()
+
+  encoder.encode("{")
+  encoder.encode("}")
+  encoder.encode("[")
+  encoder.encode("]")
+  encoder.encode(",")
+  encoder.encode(":")
 
   const formElement = document.querySelector("form")
   const dataElement = document.querySelector("#data")
@@ -1513,7 +1292,7 @@
       includes: `${index}`,
       maxDepth: 1,
     })
-    const builder = new SequenceToObject({ compactArrays: true })
+    const builder = new SequenceToObject()
     for await (const chunk of readable) {
       if (parser.isExhausted()) break
       for (const [path, value] of parser.iter(chunk)) {
@@ -1540,7 +1319,7 @@
     const options = query ? { includes: query } : undefined
     const parser = new StreamToSequence(options)
 
-    const builder = new SequenceToObject({ compactArrays: true })
+    const builder = new SequenceToObject()
     for await (const chunk of readable) {
       if (parser.isExhausted()) break
       for (const [path, value] of parser.iter(chunk)) {

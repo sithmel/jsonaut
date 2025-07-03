@@ -17,7 +17,7 @@ async function fetchIndex(filename, index) {
     includes: `${index}`,
     maxDepth: 1,
   })
-  const builder = new SequenceToObject({ compactArrays: true })
+  const builder = new SequenceToObject()
   for await (const chunk of readable) {
     if (parser.isExhausted()) break
     for (const [path, value] of parser.iter(chunk)) {
@@ -44,7 +44,7 @@ async function fetchRecord(filename, index, query) {
   const options = query ? { includes: query } : undefined
   const parser = new StreamToSequence(options)
 
-  const builder = new SequenceToObject({ compactArrays: true })
+  const builder = new SequenceToObject()
   for await (const chunk of readable) {
     if (parser.isExhausted()) break
     for (const [path, value] of parser.iter(chunk)) {

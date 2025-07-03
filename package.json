@@ -11,7 +11,8 @@
     "format": "prettier --ignore-unknown --write .",
     "build-doc": "typedoc src/*.js src/**/*.js",
     "build-demo": "npx rollup demo-src/index.js --file demo-src/demo/bundle.js --format iife && cp -r demo-src/demo docs",
-    "serve-doc": "npx http-server docs"
+    "serve-doc": "npx http-server docs",
+    "build": "npm run test && npm run types && npm run build-demo && npm run build-doc && npm run format && npm run build-doc"
   },
   "repository": {
     "type": "git",

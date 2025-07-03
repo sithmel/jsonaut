@@ -218,7 +218,7 @@ async function createIndex(JSONPath, indexPath) {
       }
       return builder
     },
-    new SequenceToObject({ compactArrays: true }),
+    new SequenceToObject(),
   )
   readStream.destroy()
   fs.writeFileSync(indexPath, JSON.stringify(indexObj.object))
@@ -272,7 +272,7 @@ async function filterFile(JSONURL, indexURL, lineNumber) {
 
   const obj = await streamToIterable(indexReadStream, { maxDepth: 1 })
     .includes(`${lineNumber}`)
-    .toObject({ compactArrays: true })
+    .toObject()
 
   // once I found the indeces I need, I can stop reading the stream
   controller.abort()
