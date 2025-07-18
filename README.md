@@ -25,7 +25,8 @@ import { streamToIterable } from "jsonaut"
 const readStream = fs.createReadStream("invoices.json")
 
 const obj = await streamToIterable(readStream)
-  .includes (`
+  .includes(
+    `
     'invoices' (
       0..2 (
         # only these fields from the first 2 invoices

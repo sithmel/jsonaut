@@ -6,6 +6,7 @@ import {
   isArrayOrObject,
   decodeAndParse,
   stringifyAndEncode,
+  areDeeplyEqual,
 } from "../../src/lib/utils.js"
 
 describe("isArrayOrObject", () => {
@@ -32,4 +33,52 @@ describe("decodeAndParse stringifyAndEncode", () => {
       "hello",
       decodeAndParse(new Uint8Array([34, 104, 101, 108, 108, 111, 34])),
     ))
+})
+
+describe("areDeeplyEqual", () => {
+  it("returns true for equal primitives", () => {
+    assert.equal(areDeeplyEqual(1, 1), true)
+    assert.equal(areDeeplyEqual("abc", "abc"), true)
+    assert.equal(areDeeplyEqual(true, true), true)
+    assert.equal(areDeeplyEqual(null, null), true)
+    assert.equal(areDeeplyEqual(undefined, undefined), true)
+  })
+
+  it("returns false for different primitives", () => {
+    assert.equal(areDeeplyEqual(1, 2), false)
+    assert.equal(areDeeplyEqual("abc", "def"), false)
+    assert.equal(areDeeplyEqual(true, false), false)
+    assert.equal(areDeeplyEqual(null, undefined), false)
+    assert.equal(areDeeplyEqual(undefined, null), false)
+  })
+
+  it("returns true for deeply equal arrays", () => {
+    assert.equal(areDeeplyEqual([1, 2, 3], [1, 2, 3]), true)
+    assert.equal(areDeeplyEqual([[1], [2]], [[1], [2]]), true)
+    assert.equal(areDeeplyEqual([], []), true)
+  })
+
+  it("returns false for different arrays", () => {
+    assert.equal(areDeeplyEqual([1, 2], [1, 2, 3]), false)
+    assert.equal(areDeeplyEqual([1, 2, 3], [3, 2, 1]), false)
+    assert.equal(areDeeplyEqual([1, [2]], [1, [3]]), false)
+  })
+
+  it("returns true for deeply equal objects", () => {
+    assert.equal(areDeeplyEqual({ a: 1, b: 2 }, { a: 1, b: 2 }), true)
+    assert.equal(areDeeplyEqual({ a: { b: 2 } }, { a: { b: 2 } }), true)
+    assert.equal(areDeeplyEqual({}, {}), true)
+  })
+
+  it("returns false for different objects", () => {
+    assert.equal(areDeeplyEqual({ a: 1 }, { a: 2 }), false)
+    assert.equal(areDeeplyEqual({ a: 1 }, { b: 1 }), false)
+    assert.equal(areDeeplyEqual({ a: { b: 2 } }, { a: { b: 3 } }), false)
+    assert.equal(areDeeplyEqual({ a: 1 }, {}), false)
+  })
+
+  it("returns false for objects and arrays", () => {
+    assert.equal(areDeeplyEqual({ 0: 1, 1: 2 }, [1, 2]), false)
+    assert.equal(areDeeplyEqual([1, 2], { 0: 1, 1: 2 }), false)
+  })
 })

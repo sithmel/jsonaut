@@ -19,6 +19,33 @@ export class GenericSequenceProcessor<
    */
   includes(expression?: string | MatcherContainer): this
   /**
+   * add a value to the sequence https://datatracker.ietf.org/doc/html/rfc6902#section-4.1
+   * @param {Path} path
+   * @param {Value} value
+   * @returns {this}
+   */
+  add(path: Path, value: Value): this
+  /**
+   * remove a value to the sequence https://datatracker.ietf.org/doc/html/rfc6902#section-4.2
+   * @param {Path} path
+   * @returns {this}
+   */
+  remove(path: Path): this
+  /**
+   * replace a value in the sequence https://datatracker.ietf.org/doc/html/rfc6902#section-4.3
+   * @param {Path} path
+   * @param {Value} value
+   * @returns {this}
+   */
+  replace(path: Path, value: Value): this
+  /**
+   * test if a value is in the sequence https://datatracker.ietf.org/doc/html/rfc6902#section-4.6
+   * @param {Path} path
+   * @param {Value} value
+   * @returns {this}
+   */
+  test(path: Path, value: Value): this
+  /**
    * Build an object back from the sequence
    * @param {any} [obj] - Options for the sequence to object conversion
    * @returns {Promise<any>}

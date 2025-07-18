@@ -1,4 +1,11 @@
 /**
+ *
+ * @param {any} value1
+ * @param {any} value2
+ * @returns {boolean}
+ */
+export function areDeeplyEqual(value1: any, value2: any): boolean
+/**
  * Return true if value is an array or object
  * @private
  * @param {any} value
@@ -6,11 +13,12 @@
  */
 export function isArrayOrObject(value: any): boolean
 /**
+ * @template T
  * @private
  * @param {Uint8Array} buffer
- * @returns {any}
+ * @returns {T}
  */
-export function decodeAndParse(buffer: Uint8Array): any
+export function decodeAndParse<T>(buffer: Uint8Array): T
 /**
  * @private
  * @param {any} value

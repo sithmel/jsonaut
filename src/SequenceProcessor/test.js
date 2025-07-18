@@ -18,9 +18,9 @@ export default async function* test(asyncIterable, pathToCheck, valueToCheck) {
   function* inner(iterable) {
     for (const iter of iterable) {
       yield iter
-    //   if (pathToCheck.getCommonPathIndex(iter[0]) !== pathToCheck.length) {
-    //     if (valueToCheck !== iter[1]) {
-    //     }
+      //   if (pathToCheck.getCommonPathIndex(iter[0]) !== pathToCheck.length) {
+      //     if (valueToCheck !== iter[1]) {
+      //     }
     }
   }
 

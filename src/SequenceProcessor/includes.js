@@ -1,3 +1,4 @@
+// @ts-check
 import { Path } from "../lib/path.js"
 import { Value } from "../lib/value.js"
 import parseIncludes from "../lib/pathMatcherParser.js"

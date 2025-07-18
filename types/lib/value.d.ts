@@ -17,16 +17,39 @@ export class Value {
 export class True extends Value {}
 export class False extends Value {}
 export class Null extends Value {}
-export class CachedValue extends Value {
+/**
+ * @template T
+ */
+export class CachedValue<T> extends Value {
   /** @param {Uint8Array} data */
   constructor(data: Uint8Array)
   data: Uint8Array<ArrayBufferLike>
-  /** @type {?string} */
-  cache: string | null
+  /** @type {?T} */
+  cache: T | null
+  /** @return {T} */
+  get decoded(): T
 }
-export class CachedString extends CachedValue {}
-export class CachedNumber extends CachedValue {}
-export class CachedSubObject extends CachedValue {}
+/**
+ * @extends {CachedValue<string>}
+ */
+export class CachedString extends CachedValue<string> {
+  /** @param {Uint8Array} data */
+  constructor(data: Uint8Array)
+}
+/**
+ * @extends {CachedValue<number>}
+ */
+export class CachedNumber extends CachedValue<number> {
+  /** @param {Uint8Array} data */
+  constructor(data: Uint8Array)
+}
+/**
+ * @extends {CachedValue<any>}
+ */
+export class CachedSubObject extends CachedValue<any> {
+  /** @param {Uint8Array} data */
+  constructor(data: Uint8Array)
+}
 export const falseValue: False
 export const trueValue: True
 export const nullValue: Null
